@@ -1,0 +1,6 @@
+{
+	"imports": {
+		"harmony": "./imports/harmony.ts",
+		"command": "./imports/command.ts"
+	}
+}

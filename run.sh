@@ -1,0 +1,1 @@
+deno run --allow-read --allow-net --allow-env --import-map=imports.json index.ts
