@@ -1,6 +1,8 @@
 {
 	"imports": {
 		"harmony": "./imports/harmony.ts",
-		"command": "./imports/command.ts"
+		"uno": "./imports/uno.ts",
+		"cards": "./imports/cards.ts",
+		"deck": "./imports/deck.ts"
 	}
 }
