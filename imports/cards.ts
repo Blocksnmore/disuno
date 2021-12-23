@@ -9,9 +9,9 @@ export enum CardColor {
 export enum CardType {
 	SKIP = "SKIP",
 	REVERSE = "REVERSE",
-	DRAW_TWO = "DRAW_TWO",
+	DRAW_TWO = "PLUS_TWO",
 	WILD = "WILD",
-	WILD_DRAW_FOUR = "WILD_DRAW_FOUR",
+	WILD_DRAW_FOUR = "PLUS_FOUR",
 	ZERO = "ZERO",
 	ONE = "ONE",
 	TWO = "TWO",
