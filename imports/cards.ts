@@ -7,21 +7,23 @@ export enum CardColor {
 }
 
 export enum CardType {
+	WILD = "WILD",
+	WILD_DRAW_FOUR = "PLUS_4",
+
+	DRAW_TWO = "PLUS_2",
 	SKIP = "SKIP",
 	REVERSE = "REVERSE",
-	DRAW_TWO = "PLUS_TWO",
-	WILD = "WILD",
-	WILD_DRAW_FOUR = "PLUS_FOUR",
-	ZERO = "ZERO",
-	ONE = "ONE",
-	TWO = "TWO",
-	THREE = "THREE",
-	FOUR = "FOUR",
-	FIVE = "FIVE",
-	SIX = "SIX",
-	SEVEN = "SEVEN",
-	EIGHT = "EIGHT",
-	NINE = "NINE",
+
+	ZERO = "0",
+	ONE = "1",
+	TWO = "2",
+	THREE = "3",
+	FOUR = "4",
+	FIVE = "5",
+	SIX = "6",
+	SEVEN = "7",
+	EIGHT = "8",
+	NINE = "9",
 }
 
 export interface DeckCard {

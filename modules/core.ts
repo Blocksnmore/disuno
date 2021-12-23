@@ -67,6 +67,8 @@ export default class Events extends Extension {
 	async interactionCreate(_ext: this, i: Interaction) {
 		if (!isMessageComponentInteraction(i)) return;
 		if (i.guild == undefined || i.channel == undefined) return;
+		if (i.message.author.id != this.client.user!.id) return;
+
 		switch (i.customID.toLowerCase()) {
 			// Creation
 			case "creategame": {
@@ -164,6 +166,9 @@ export default class Events extends Extension {
 								embed,
 							});
 
+							// Doesn't work
+							//i.channel.pinMessage(game.message);
+
 							// TODO (When done with bot): Add the ability to add rules like 7-0, etc
 							i.editResponse({
 								embeds: [
@@ -252,8 +257,8 @@ export default class Events extends Extension {
 							});
 						} else {
 							await i.respond({
-								type: InteractionResponseType.DEFERRED_MESSAGE_UPDATE
-							})
+								type: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
+							});
 
 							await game.message!.edit({
 								embeds: [
@@ -343,19 +348,24 @@ export default class Events extends Extension {
 				}
 				break;
 			}
-
-			// Respond so button doesn't show the interaction failed
-			case "blank": {
-				await i.respond({
-					flags: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
-				});
-				break;
-			}
 		}
 
 		// Gameplay
 		const game = games.get(i.guild.id);
 		if (game == undefined || game.started == false) return;
+
+		if (!game.getPlayerIDArray().includes(i.user.id)) {
+			return await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						title: "Unable to play!",
+						description: "You are not in this game!",
+					}).setColor("RED"),
+				],
+			});
+		}
+
 		switch (i.customID.toLowerCase()) {
 			case "play": {
 				if (game.getCurrentPlayer().id != i.user.id) {
@@ -364,80 +374,227 @@ export default class Events extends Extension {
 						embeds: [
 							new Embed({
 								title: "Unable to play!",
-								description: "It is not your turn!",
+								description:
+									"It is not your turn! View your cards by clicking `View cards`.",
 							}).setColor("RED"),
 						],
 					});
 				} else {
-					return;
+					game.showPlayerCards(i);
 				}
 				break;
 			}
 
 			case "view": {
-				console.log("a")
 				game.showPlayerCards(i);
 				break;
 			}
 		}
 
-		// Viewing cards
-		switch (i.customID.toUpperCase()) {
-			// TODO: Make this work
-			case CardColor.RED: {
-				const cards = game
-					.getPlayer(i.user.id)!
-					.cards.filter((c) => c.color == CardColor.RED);
-				if (cards.length == 0) {
-					await i.editResponse({
-						embeds: [
-							new Embed({
-								title: "No cards!",
-								description: "You have no cards for this color!",
-							}).setColor("RED"),
-						],
-						components: [],
-					});
-				} else {
-					const isCurrentPlayer = game.getCurrentPlayer().id == i.user.id;
-					const buttonRows: MessageComponentPayload[][] = [[]];
-					const cardCounts: { [key: string]: number } = {};
-					let index = 0;
+		const viewCardColor = async (color: CardColor) => {
+			let ui: {
+				buttonColor: ButtonStyle;
+				colorText: string;
+				buttonKey: string;
+			};
 
-					for (const card of cards) {
-						cardCounts[card.type] = (cardCounts[card.type] ?? 0) + 1;
+			switch (color) {
+				case CardColor.RED: {
+					ui = {
+						buttonColor: ButtonStyle.RED,
+						colorText: "Red",
+						buttonKey: "r",
+					};
+					break;
+				}
+
+				case CardColor.BLUE: {
+					ui = {
+						buttonColor: ButtonStyle.BLURPLE,
+						colorText: "Blue",
+						buttonKey: "b",
+					};
+					break;
+				}
+
+				case CardColor.GREEN: {
+					ui = {
+						buttonColor: ButtonStyle.GREEN,
+						colorText: "Green",
+						buttonKey: "g",
+					};
+					break;
+				}
+
+				case CardColor.YELLOW: {
+					ui = {
+						buttonColor: ButtonStyle.GREY,
+						colorText: "Yellow",
+						buttonKey: "y",
+					};
+					break;
+				}
+
+				case CardColor.WILD: {
+					ui = {
+						buttonColor: ButtonStyle.GREY,
+						colorText: "Wild",
+						buttonKey: "w",
+					};
+					break;
+				}
+			}
+
+			const cards = game
+				.getPlayer(i.user.id)!
+				.cards.filter((c) => c.color == color);
+
+			if (cards.length == 0) {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "No cards!",
+							description: "You have no cards for this color!",
+						}).setColor("RED"),
+					],
+					components: [],
+				});
+			} else {
+				const isCurrentPlayer = game.getCurrentPlayer().id == i.user.id;
+				const buttonRows: MessageComponentPayload[][] = [[]];
+				const cardCounts: { [key: string]: number } = {};
+				let index = 0;
+
+				for (const card of cards) {
+					cardCounts[card.type] = (cardCounts[card.type] ?? 0) + 1;
+				}
+
+				for (const cardType in cardCounts) {
+					const cardCount = cardCounts[cardType];
+
+					if (buttonRows[index].length > 4) {
+						// No way there's going to be 5 rows
+						index++;
+						buttonRows[index] = [];
 					}
-
-					for (const cardType in cardCounts) {
-						const cardCount = cardCounts[cardType];
-						if (buttonRows[index].length > 4) {
-							// No way there's going to be 5 rows
-							index++;
-							buttonRows[index] = [];
-						}
-						buttonRows[index].push({
-							type: 2,
-							label: `${game.formatCardString(cardType)}${
-								cardCount > 1 ? ` x${cardCount}` : ""
-							}`,
-							custom_id: isCurrentPlayer ? "blank" : `r-${cardType}`,
-							style: ButtonStyle.RED,
-						});
-					}
-
-					await i.editResponse({
-						embeds: [
-							new Embed({
-								title: "Red cards",
-								description: "You have the following cards:",
-							}).setColor("RED"),
-						],
-						components: buttonRows.map((row) => ({
-							type: 1,
-							components: row,
-						})),
+					buttonRows[index].push({
+						type: 2,
+						label: `${game.formatCardString(cardType)}${
+							cardCount > 1 ? ` x${cardCount}` : ""
+						}`,
+						custom_id: `${ui.buttonKey}-${cardType}`,
+						style: ui.buttonColor,
+						disabled: !(
+							isCurrentPlayer &&
+							game.canCardBePlayed(cards.find((c) => c.type == cardType)!)
+						),
 					});
 				}
+
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: `${ui.colorText} cards`,
+							description: `Current card: \`${game.cardToString(
+								game.lastCardPlayed!
+							)}\`\n\nYou have the following cards:`,
+						}).setColor(game.cardColorToEmbedColor(color)),
+					],
+					components: buttonRows.map((row) => ({
+						type: 1,
+						components: row,
+					})),
+				});
+			}
+		};
+
+		// Viewing cards
+		switch (i.customID) {
+			case CardColor.RED: {
+				viewCardColor(CardColor.RED);
+				break;
+			}
+
+			case CardColor.BLUE: {
+				viewCardColor(CardColor.BLUE);
+				break;
+			}
+
+			case CardColor.GREEN: {
+				viewCardColor(CardColor.GREEN);
+				break;
+			}
+
+			case CardColor.YELLOW: {
+				viewCardColor(CardColor.YELLOW);
+				break;
+			}
+
+			case CardColor.WILD: {
+				viewCardColor(CardColor.WILD);
+				break;
+			}
+		}
+
+		if (game.getCurrentPlayer().id != i.user.id) {
+			await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						title: "Not your turn!",
+						description: "It's not your turn!",
+					}).setColor("RED"),
+				],
+			});
+		}
+
+		// Playing cards
+		switch (i.customID.toUpperCase()) {
+			case "W-WILD":
+			case "W-PLUS_4": {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: `Wild${i.customID.includes("4") ? " +4" : ""} card`,
+							description: "Please select a color to change to!",
+						}).setColor("LIGHT_GREY"),
+					],
+					components: [
+						{
+							type: 1,
+							components: [
+								{
+									type: 2,
+									label: "Blue",
+									custom_id: `w${i.customID.includes("4") ? "4" : ""}-b`,
+									style: ButtonStyle.BLURPLE,
+								},
+								{
+									type: 2,
+									label: "Red",
+									custom_id: `w${i.customID.includes("4") ? "4" : ""}-r`,
+									style: ButtonStyle.RED,
+								},
+								{
+									type: 2,
+									label: "Green",
+									custom_id: `w${i.customID.includes("4") ? "4" : ""}-g`,
+									style: ButtonStyle.GREEN,
+								},
+								{
+									type: 2,
+									label: "Yellow",
+									custom_id: `w${i.customID.includes("4") ? "4" : ""}-y`,
+									style: ButtonStyle.GREY,
+								},
+							],
+						},
+					] as MessageComponentPayload[],
+				});
+				break;
 			}
 		}
 	}
@@ -451,7 +608,6 @@ class Commands extends ApplicationCommandsModule {
 		if (i.member == undefined || i.channel == undefined) return;
 		if (i.member.permissions.has("MANAGE_SERVER")) {
 			const { embed, components } = getPanelEmbedAndButtons();
-
 			const { message } = await i.reply({
 				embeds: [embed],
 				components,
