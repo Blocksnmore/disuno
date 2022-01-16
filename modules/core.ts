@@ -33,33 +33,26 @@ export default class Events extends Extension {
 			});
 			return cmd;
 		});
-		if (
-			(
-				await this.client.interactions.commands.guild("688115766867918950")
-			).array().length != 2
-		) {
-			this.client.interactions.commands.bulkEdit(
-				[
-					{
-						name: "createpanel",
-						description: "Create a panel for Discord UNO!",
-					},
-					{
-						name: "deckinfo",
-						description: "Get information about a deck.",
-						options: [
-							{
-								name: "deck",
-								type: "STRING",
-								description: "Get information about said deck.",
-								required: true,
-								choices: decks.map((d) => ({ name: d.name, value: d.id })),
-							},
-						],
-					},
-				],
-				"688115766867918950"
-			);
+		if ((await this.client.interactions.commands.all()).array().length != 2) {
+			this.client.interactions.commands.bulkEdit([
+				{
+					name: "createpanel",
+					description: "Create a panel for Discord UNO!",
+				},
+				{
+					name: "deckinfo",
+					description: "Get information about a deck.",
+					options: [
+						{
+							name: "deck",
+							type: "STRING",
+							description: "Get information about said deck.",
+							required: true,
+							choices: decks.map((d) => ({ name: d.name, value: d.id })),
+						},
+					],
+				},
+			]);
 		}
 	}
 
@@ -355,7 +348,7 @@ export default class Events extends Extension {
 		if (game == undefined || game.started == false) return;
 
 		if (!game.getPlayerIDArray().includes(i.user.id)) {
-			return await i.reply({
+			await i.reply({
 				ephemeral: true,
 				embeds: [
 					new Embed({
@@ -364,29 +357,75 @@ export default class Events extends Extension {
 					}).setColor("RED"),
 				],
 			});
+			return;
 		}
 
 		switch (i.customID.toLowerCase()) {
-			case "play": {
+			case "view": {
+				game.showPlayerCards(i);
+				break;
+			}
+			case "draw": {
 				if (game.getCurrentPlayer().id != i.user.id) {
 					await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
-								title: "Unable to play!",
-								description:
-									"It is not your turn! View your cards by clicking `View cards`.",
+								title: "Unable to draw!",
+								description: "It is not your turn!",
 							}).setColor("RED"),
 						],
 					});
 				} else {
-					game.showPlayerCards(i);
+					let drawn = 0;
+					const giveCard = async () => {
+						drawn++;
+						game.givePlayerCards(1);
+						if (
+							!game.canCardBePlayed(
+								game.getCurrentPlayer().cards[
+									game.getCurrentPlayer().cards.length - 1
+								]
+							)
+						) {
+							giveCard();
+						} else {
+							await i.reply({
+								ephemeral: true,
+								embeds: [
+									new Embed({
+										title: "Cards drawn!",
+										description: `You have drawn ${drawn} cards and got a \`${game.cardToString(
+											game.getCurrentPlayer().cards[
+												game.getCurrentPlayer().cards.length - 1
+											]
+										)}\``,
+									}).setColor("GREEN"),
+								],
+								components: [
+									{
+										type: 1,
+										components: [
+											{
+												type: 2,
+												label: "Play",
+												custom_id: "play",
+												style: ButtonStyle.GREEN,
+											},
+											{
+												type: 2,
+												label: "Keep",
+												custom_id: "keey",
+												style: ButtonStyle.GREY,
+											},
+										],
+									},
+								] as MessageComponentPayload[],
+							});
+						}
+					};
+					giveCard();
 				}
-				break;
-			}
-
-			case "view": {
-				game.showPlayerCards(i);
 				break;
 			}
 		}
@@ -532,7 +571,8 @@ export default class Events extends Extension {
 					embeds: [
 						new Embed({
 							title: "Call UNO!",
-							description: "Nobody needs to be called out currently! Somebody called it out already!",
+							description:
+								"Nobody needs to be called out currently! Somebody called it out already!",
 						}).setColor("RED"),
 					],
 				});

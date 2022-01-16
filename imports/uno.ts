@@ -26,7 +26,7 @@ export class UnoGame {
 	public started = false;
 	public lastCardPlayed?: DeckCard;
 	public deck: DeckCard[];
-	public startingCards = 20;
+	public startingCards = 7;
 	/** For card stacking */
 	public drawAmount = 0;
 
@@ -459,9 +459,9 @@ export class UnoGame {
 					components: [
 						{
 							type: 2,
-							label: "Play",
-							style: ButtonStyle.GREEN,
-							customID: "play",
+							label: "View cards",
+							style: ButtonStyle.GREY,
+							customID: "view",
 						},
 						{
 							type: 2,
@@ -469,12 +469,6 @@ export class UnoGame {
 							style: ButtonStyle.RED,
 							customID: "draw",
 							disabled: this.deck.length == 0,
-						},
-						{
-							type: 2,
-							label: "View cards",
-							style: ButtonStyle.GREY,
-							customID: "view",
 						},
 						{
 							type: 2,
