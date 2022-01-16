@@ -1,4 +1,4 @@
-import { DeckCard, CardColor, CardType } from "cards";
+import { DeckCard, CardColor, CardType } from "../../imports/cards.ts";
 
 const deck: DeckCard[] = [
 	// Plus 4s

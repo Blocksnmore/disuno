@@ -1,5 +1,5 @@
-import { DeckCard } from "cards";
-import ClassicCards from "../cards/classic.ts";
+import { DeckCard } from "./cards.ts";
+import ClassicCards from "../cards/classic/deck.ts";
 
 export interface DeckInfo {
 	name: string;

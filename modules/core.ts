@@ -478,6 +478,7 @@ export default class Events extends Extension {
 						index++;
 						buttonRows[index] = [];
 					}
+
 					buttonRows[index].push({
 						type: 2,
 						label: `${game.formatCardString(cardType)}${
@@ -490,6 +491,19 @@ export default class Events extends Extension {
 							game.canCardBePlayed(cards.find((c) => c.type == cardType)!)
 						),
 					});
+				}
+
+				if (game.getCurrentPlayer().cards.length == 2) {
+					if (game.doesCurrentPlayerHavePlayableCard()) {
+						buttonRows.push([
+							{
+								type: 2,
+								label: "Call UNO!",
+								custom_id: "uno",
+								style: ButtonStyle.GREEN,
+							},
+						]);
+					}
 				}
 
 				await i.reply({
@@ -509,6 +523,84 @@ export default class Events extends Extension {
 				});
 			}
 		};
+
+		if (i.customID == "call-uno") {
+			const targetPlayer = game.players.filter((p) => !p.calledUno)[0];
+			if (targetPlayer == null) {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Call UNO!",
+							description: "Nobody needs to be called out currently! Somebody called it out already!",
+						}).setColor("RED"),
+					],
+				});
+			} else {
+				if (targetPlayer.id == i.user.id) {
+					targetPlayer.calledUno = true;
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								title: "Call UNO!",
+								description: "Good save, You have called uno!",
+							}).setColor("GREEN"),
+						],
+					});
+				} else {
+					game.givePlayerCards(2, targetPlayer);
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								title: "Call UNO!",
+								description: "You have called the user out!",
+							}).setColor("GREEN"),
+						],
+					});
+				}
+			}
+			return;
+		}
+
+		if (i.customID == "uno") {
+			if (game.getCurrentPlayer().id == i.user.id) {
+				if (game.getCurrentPlayer().calledUno) {
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								title: "Call UNO!",
+								description: "You have already called UNO!",
+							}).setColor("RED"),
+						],
+					});
+				} else {
+					game.getCurrentPlayer().calledUno = true;
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								title: "Call UNO!",
+								description: "You have called UNO!",
+							}).setColor("GREEN"),
+						],
+					});
+				}
+			} else {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Call UNO!",
+							description: "It's not your turn!",
+						}).setColor("RED"),
+					],
+				});
+			}
+			return;
+		}
 
 		// Viewing cards
 		switch (i.customID) {
@@ -551,51 +643,31 @@ export default class Events extends Extension {
 		}
 
 		// Playing cards
-		switch (i.customID.toUpperCase()) {
-			case "W-WILD":
-			case "W-PLUS_4": {
-				await i.reply({
-					ephemeral: true,
-					embeds: [
-						new Embed({
-							title: `Wild${i.customID.includes("4") ? " +4" : ""} card`,
-							description: "Please select a color to change to!",
-						}).setColor("LIGHT_GREY"),
-					],
-					components: [
-						{
-							type: 1,
-							components: [
-								{
-									type: 2,
-									label: "Blue",
-									custom_id: `w${i.customID.includes("4") ? "4" : ""}-b`,
-									style: ButtonStyle.BLURPLE,
-								},
-								{
-									type: 2,
-									label: "Red",
-									custom_id: `w${i.customID.includes("4") ? "4" : ""}-r`,
-									style: ButtonStyle.RED,
-								},
-								{
-									type: 2,
-									label: "Green",
-									custom_id: `w${i.customID.includes("4") ? "4" : ""}-g`,
-									style: ButtonStyle.GREEN,
-								},
-								{
-									type: 2,
-									label: "Yellow",
-									custom_id: `w${i.customID.includes("4") ? "4" : ""}-y`,
-									style: ButtonStyle.GREY,
-								},
-							],
-						},
-					] as MessageComponentPayload[],
-				});
-				break;
+		const card = game.stringToCard(i.customID);
+		if (!game.canCardBePlayed(card)) {
+			await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						title: "Unplayable card!",
+						description: "You can't play this card!",
+					}).setColor("RED"),
+				],
+			});
+		} else {
+			if (game.getCurrentPlayer().cards.length == 1) {
+				games.delete(i.guild.id);
 			}
+			game.playCard(card.color, card.type);
+			await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						title: "Card played!",
+						description: `You played \`${game.cardToString(card)}\``,
+					}).setColor("GREEN"),
+				],
+			});
 		}
 	}
 }

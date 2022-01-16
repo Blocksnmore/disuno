@@ -7,9 +7,9 @@ import {
 	Client,
 	Interaction,
 	MessageComponentPayload,
-} from "harmony";
-import { decks, DeckType } from "deck";
-import { DeckCard, CardType, CardColor } from "cards";
+} from "./harmony.ts";
+import { decks, DeckType } from "./deck.ts";
+import { DeckCard, CardType, CardColor } from "./cards.ts";
 
 interface UnoPlayer {
 	id: string;
@@ -29,8 +29,6 @@ export class UnoGame {
 	public startingCards = 20;
 	/** For card stacking */
 	public drawAmount = 0;
-	/** If you can play a plus 2 on the stack */
-	public canPlayPlusTwo = false;
 
 	constructor(
 		public creator: {
@@ -47,6 +45,20 @@ export class UnoGame {
 	}
 
 	// Utils
+
+	private doesCurrentPlayerHaveValidPlusCard() {
+		for (const card of this.getCurrentPlayer().cards) {
+			if (
+				card.type == CardType.WILD_DRAW_FOUR ||
+				(card.type == CardType.DRAW_TWO &&
+					this.lastCardPlayed!.type == CardType.DRAW_TWO)
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private shuffle<T>(array: T[]): T[] {
 		const newArray: T[] = [];
 
@@ -126,37 +138,48 @@ export class UnoGame {
 
 		if (type == CardType.DRAW_TWO) {
 			this.drawAmount += 2;
-			this.canPlayPlusTwo = true;
 		} else if (type == CardType.WILD_DRAW_FOUR) {
 			this.drawAmount += 4;
-			this.canPlayPlusTwo = false;
 		}
 
 		this.lastCardPlayed = {
 			type,
-			color
-		}
+			color,
+		};
 
 		this.deck.push({
 			type,
-			color
-		})
+			color,
+		});
 
 		// Prevent order stuff
 		this.shuffleDeck();
 
-		if (this.clockwiseOrder) {
-			this.playerIndex++;
-			if (this.playerIndex >= this.players.length) {
-				this.playerIndex = 0;
+		const nextOrder = () => {
+			if (this.clockwiseOrder) {
+				this.playerIndex++;
+				if (this.playerIndex >= this.players.length) {
+					this.playerIndex = 0;
+				}
+			} else {
+				this.playerIndex--;
+				if (this.playerIndex < 0) {
+					this.playerIndex = this.players.length - 1;
+				}
 			}
+		};
+
+		if (this.getCurrentPlayer().cards.length == 0) {
+			this.onGameEnd();
 		} else {
-			this.playerIndex--;
-			if (this.playerIndex < 0) {
-				this.playerIndex = this.players.length - 1;
+			nextOrder();
+
+			if (!this.doesCurrentPlayerHaveValidPlusCard() && this.drawAmount > 0) {
+				this.givePlayerCards(this.drawAmount);
+				this.drawAmount = 0;
+				nextOrder();
 			}
 		}
-
 	}
 
 	// Events
@@ -172,6 +195,30 @@ export class UnoGame {
 	}
 
 	// Methods
+
+	public doesCurrentPlayerHavePlayableCard() {
+		if (this.doesCurrentPlayerHaveValidPlusCard()) {
+			return true;
+		}
+		for (const card of this.getCurrentPlayer().cards) {
+			if (
+				card.color == this.lastCardPlayed!.color ||
+				card.color == CardColor.WILD
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public givePlayerCards(
+		amount: number,
+		player: UnoPlayer = this.getCurrentPlayer()
+	) {
+		for (let i = 0; i <= amount; i++) {
+			player.cards.push(this.deck.pop()!);
+		}
+	}
 
 	private distributeCards() {
 		const blacklistedStartCards: CardType[] = [
@@ -213,7 +260,57 @@ export class UnoGame {
 		}
 	}
 
+	public stringToCard(card: string): DeckCard {
+		const [color, type] = card.toLowerCase().split("-");
+		const cardColor = {
+			w: CardColor.WILD,
+			r: CardColor.RED,
+			g: CardColor.GREEN,
+			b: CardColor.BLUE,
+			y: CardColor.YELLOW,
+		}[color] as CardColor;
+
+		const cardType = {
+			0: CardType.ZERO,
+			1: CardType.ONE,
+			2: CardType.TWO,
+			3: CardType.THREE,
+			4: CardType.FOUR,
+			5: CardType.FIVE,
+			6: CardType.SIX,
+			7: CardType.SEVEN,
+			8: CardType.EIGHT,
+			9: CardType.NINE,
+			reverse: CardType.REVERSE,
+			skip: CardType.SKIP,
+			draw_two: CardType.DRAW_TWO,
+			wild: CardType.WILD,
+			wild_draw_four: CardType.WILD_DRAW_FOUR,
+		}[type] as CardType;
+
+		return {
+			color: cardColor,
+			type: cardType,
+		};
+	}
+
 	public canCardBePlayed(card: DeckCard) {
+		if (
+			[CardType.WILD_DRAW_FOUR, CardType.DRAW_TWO].includes(
+				this.lastCardPlayed!.type
+			) &&
+			this.drawAmount > 0
+		) {
+			if (
+				(card.type == CardType.DRAW_TWO &&
+					this.lastCardPlayed?.type == CardType.DRAW_TWO) ||
+				card.type == CardType.WILD_DRAW_FOUR
+			) {
+				return true;
+			} else {
+				return false;
+			}
+		}
 		if (
 			card.color == CardColor.WILD ||
 			card.color == this.lastCardPlayed!.color ||
@@ -226,6 +323,52 @@ export class UnoGame {
 	}
 
 	// Messages
+
+	public async onGameEnd() {
+		this.started = false;
+		await this.message!.edit({
+			embeds: [
+				new Embed({
+					author: {
+						name: "Discord Uno",
+					},
+					title: "Game Over",
+					description: `<@!${this.getCurrentPlayer().id}> won the game!`,
+					fields: [
+						{
+							name: "Last played card",
+							value: this.cardToString(this.lastCardPlayed!),
+						},
+						{
+							name: "Player standings",
+							value: this.players
+								.map(
+									(p) =>
+										`<@!${p.id}> - \`${
+											p.id == this.getCurrentPlayer().id
+												? "Winner"
+												: `${p.cards.length} cards`
+										}\``
+								)
+								.join("\n"),
+						},
+					],
+					footer: {
+						text: "This embed will disappear in 10 seconds",
+					},
+				}).setColor(this.cardColorToEmbedColor(this.lastCardPlayed!.color)),
+			],
+			components: [],
+		});
+
+		setTimeout(() => {
+			const { embed, components } = getPanelEmbedAndButtons();
+			this.message!.edit({
+				embeds: [embed],
+				components,
+			});
+		}, 10000);
+	}
 
 	public async showPlayerCards(i: Interaction) {
 		const colors: CardColor[] = [];
@@ -268,9 +411,7 @@ export class UnoGame {
 				new Embed({
 					title: "Your cards",
 					description: "Select a card category",
-				}).setColor(
-					this.cardColorToEmbedColor(this.lastCardPlayed!.color)
-				),
+				}).setColor(this.cardColorToEmbedColor(this.lastCardPlayed!.color)),
 			],
 			components: [
 				{
@@ -282,6 +423,14 @@ export class UnoGame {
 	}
 
 	public async showGameEmbed() {
+		let canCallUno = false;
+
+		for (const player of this.players) {
+			if (player.cards.length == 1 && !player.calledUno) {
+				canCallUno = true;
+			}
+		}
+
 		await this.message!.edit({
 			embed: new Embed({
 				author: {
@@ -319,13 +468,20 @@ export class UnoGame {
 							label: "Draw",
 							style: ButtonStyle.RED,
 							customID: "draw",
-							disabled: this.deck.length == 0
+							disabled: this.deck.length == 0,
 						},
 						{
 							type: 2,
 							label: "View cards",
 							style: ButtonStyle.GREY,
 							customID: "view",
+						},
+						{
+							type: 2,
+							label: 'Call "Uno"',
+							style: ButtonStyle.GREEN,
+							customID: "call-uno",
+							disabled: !canCallUno,
 						},
 					],
 				},
