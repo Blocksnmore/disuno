@@ -399,7 +399,12 @@ export default class Events extends Extension {
 											game.getCurrentPlayer().cards[
 												game.getCurrentPlayer().cards.length - 1
 											]
-										)}\``,
+										)}\`\nCards in hand: ${
+											game.getCurrentPlayer().cards.length
+										}`,
+										footer: {
+											text: "Card will be automatically played in 15 seconds if you don't respond",
+										},
 									}).setColor("GREEN"),
 								],
 								components: [
@@ -415,13 +420,54 @@ export default class Events extends Extension {
 											{
 												type: 2,
 												label: "Keep",
-												custom_id: "keey",
+												custom_id: "keep",
 												style: ButtonStyle.GREY,
 											},
 										],
 									},
 								] as MessageComponentPayload[],
 							});
+
+							const [res] = await i.client.waitFor(
+								"interactionCreate",
+								(i) =>
+									isMessageComponentInteraction(i) &&
+									i.user.id == game.getCurrentPlayer().id &&
+									["keep", "play"].includes(i.customID),
+								15 * 1000
+							);
+
+							if (
+								res == undefined ||
+								(isMessageComponentInteraction(res) && i.customID == "play")
+							) {
+								const { color, type } =
+									game.getCurrentPlayer().cards[
+										game.getCurrentPlayer().cards.length - 1
+									];
+								if (color == CardColor.WILD) {
+									//TODO: Implement color picking
+								} 
+								game.playCard(color, type);
+								await i.reply({
+									embeds: [
+										new Embed({
+											title: "Card played!",
+											description: "You have played your card!",
+										}).setColor("GREEN"),
+									],
+								});
+							} else {
+								game.nextTurn();
+								await i.reply({
+									embeds: [
+										new Embed({
+											title: "Card held!",
+											description: "You have kept your card",
+										}).setColor("GREEN"),
+									],
+								});
+							}
 						}
 					};
 					giveCard();

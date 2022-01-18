@@ -155,29 +155,15 @@ export class UnoGame {
 		// Prevent order stuff
 		this.shuffleDeck();
 
-		const nextOrder = () => {
-			if (this.clockwiseOrder) {
-				this.playerIndex++;
-				if (this.playerIndex >= this.players.length) {
-					this.playerIndex = 0;
-				}
-			} else {
-				this.playerIndex--;
-				if (this.playerIndex < 0) {
-					this.playerIndex = this.players.length - 1;
-				}
-			}
-		};
-
 		if (this.getCurrentPlayer().cards.length == 0) {
 			this.onGameEnd();
 		} else {
-			nextOrder();
+			this.nextTurn();
 
 			if (!this.doesCurrentPlayerHaveValidPlusCard() && this.drawAmount > 0) {
 				this.givePlayerCards(this.drawAmount);
 				this.drawAmount = 0;
-				nextOrder();
+				this.nextTurn();
 			}
 		}
 	}
@@ -195,6 +181,20 @@ export class UnoGame {
 	}
 
 	// Methods
+
+	public nextTurn() {
+		if (this.clockwiseOrder) {
+			this.playerIndex++;
+			if (this.playerIndex >= this.players.length) {
+				this.playerIndex = 0;
+			}
+		} else {
+			this.playerIndex--;
+			if (this.playerIndex < 0) {
+				this.playerIndex = this.players.length - 1;
+			}
+		}
+	}
 
 	public doesCurrentPlayerHavePlayableCard() {
 		if (this.doesCurrentPlayerHaveValidPlusCard()) {
