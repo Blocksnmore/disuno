@@ -181,7 +181,7 @@ export class UnoGame {
 		this.shuffleDeck();
 
 		if (this.getCurrentPlayer().cards.length == 0) {
-			this.onGameEnd();
+			return this.onGameEnd();
 		}
 
 		this.nextTurn();
@@ -435,7 +435,7 @@ export class UnoGame {
 		});
 	}
 
-	public async showGameEmbed() {
+	public async showGameEmbed(send = true) {
 		let canCallUno = false;
 
 		for (const player of this.players) {
@@ -449,7 +449,9 @@ export class UnoGame {
 				author: {
 					name: "Discord Uno",
 				},
-				description: `Current turn: <@!${this.getCurrentPlayer().id}> \nOrder: ${this.clockwiseOrder ? '⏫' : '⏬'}`,
+				description: `Current turn: <@!${
+					this.getCurrentPlayer().id
+				}> \nOrder: ${this.clockwiseOrder ? "⏫" : "⏬"}`,
 				fields: [
 					{
 						name: "Current card",
@@ -458,7 +460,12 @@ export class UnoGame {
 					{
 						name: "Cards:",
 						value: this.players
-							.map((p) => `\`${p.username}: ${p.cards.length}\``)
+							.map(
+								(p) =>
+									`${this.getCurrentPlayer().id == p.id ? "▶" : "🟦"} \`${
+										p.username
+									}: ${p.cards.length}\``
+							)
 							.join("\n"),
 					},
 				],
@@ -494,6 +501,13 @@ export class UnoGame {
 				},
 			],
 		});
+
+		if (send) {
+			const msg = await this.message!.channel.send(
+				`<@!${this.getCurrentPlayer().id}>`
+			);
+			msg.delete();
+		}
 	}
 
 	public getLobbyEmbedAndButton(): {

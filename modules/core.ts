@@ -410,7 +410,7 @@ export default class Events extends Extension {
 						) {
 							giveCard();
 						} else {
-							game.showGameEmbed();
+							game.showGameEmbed(false);
 							await i.reply({
 								ephemeral: true,
 								embeds: [
@@ -569,6 +569,7 @@ export default class Events extends Extension {
 								});
 							} else {
 								game.nextTurn();
+								game.showGameEmbed();
 								await i.editResponse({
 									embeds: [
 										new Embed({
