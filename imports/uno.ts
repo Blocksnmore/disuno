@@ -46,6 +46,15 @@ export class UnoGame {
 
 	// Utils
 
+	public doesCurrentPlayerHaveCard({ type, color }: DeckCard) {
+		for (const card of this.getCurrentPlayer().cards) {
+			if (card.type == type && card.color == color) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private doesCurrentPlayerHaveValidPlusCard() {
 		for (const card of this.getCurrentPlayer().cards) {
 			if (
@@ -128,7 +137,12 @@ export class UnoGame {
 		const cards = [];
 		let cardRemoved = false;
 		for (const card of this.getCurrentPlayer().cards) {
-			if (card.type == type && card.color == color && !cardRemoved) {
+			if (
+				(([CardType.WILD, CardType.WILD_DRAW_FOUR].includes(card.type) &&
+					[CardType.WILD, CardType.WILD_DRAW_FOUR].includes(type)) ||
+					(card.type == type && card.color == color)) &&
+				!cardRemoved
+			) {
 				cardRemoved = true;
 			} else {
 				cards.push(card);
@@ -149,23 +163,36 @@ export class UnoGame {
 
 		this.deck.push({
 			type,
-			color,
+			color:
+				type == CardType.WILD || type == CardType.WILD_DRAW_FOUR
+					? CardColor.WILD
+					: color,
 		});
+
+		if (type == CardType.SKIP) {
+			this.nextTurn();
+		}
+
+		if (type == CardType.REVERSE) {
+			this.clockwiseOrder = !this.clockwiseOrder;
+		}
 
 		// Prevent order stuff
 		this.shuffleDeck();
 
 		if (this.getCurrentPlayer().cards.length == 0) {
 			this.onGameEnd();
-		} else {
-			this.nextTurn();
-
-			if (!this.doesCurrentPlayerHaveValidPlusCard() && this.drawAmount > 0) {
-				this.givePlayerCards(this.drawAmount);
-				this.drawAmount = 0;
-				this.nextTurn();
-			}
 		}
+
+		this.nextTurn();
+
+		if (!this.doesCurrentPlayerHaveValidPlusCard() && this.drawAmount > 0) {
+			this.givePlayerCards(this.drawAmount);
+			this.drawAmount = 0;
+			this.nextTurn();
+		}
+
+		this.showGameEmbed();
 	}
 
 	// Events
@@ -215,7 +242,7 @@ export class UnoGame {
 		amount: number,
 		player: UnoPlayer = this.getCurrentPlayer()
 	) {
-		for (let i = 0; i <= amount; i++) {
+		for (let i = 0; i < amount; i++) {
 			player.cards.push(this.deck.pop()!);
 		}
 	}
@@ -283,9 +310,9 @@ export class UnoGame {
 			9: CardType.NINE,
 			reverse: CardType.REVERSE,
 			skip: CardType.SKIP,
-			draw_two: CardType.DRAW_TWO,
+			plus_2: CardType.DRAW_TWO,
 			wild: CardType.WILD,
-			wild_draw_four: CardType.WILD_DRAW_FOUR,
+			plus_4: CardType.WILD_DRAW_FOUR,
 		}[type] as CardType;
 
 		return {
@@ -294,32 +321,18 @@ export class UnoGame {
 		};
 	}
 
-	public canCardBePlayed(card: DeckCard) {
-		if (
-			[CardType.WILD_DRAW_FOUR, CardType.DRAW_TWO].includes(
-				this.lastCardPlayed!.type
-			) &&
-			this.drawAmount > 0
-		) {
-			if (
-				(card.type == CardType.DRAW_TWO &&
-					this.lastCardPlayed?.type == CardType.DRAW_TWO) ||
-				card.type == CardType.WILD_DRAW_FOUR
-			) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-		if (
-			card.color == CardColor.WILD ||
-			card.color == this.lastCardPlayed!.color ||
-			card.type == this.lastCardPlayed!.type
-		) {
-			return true;
+	public canCardBePlayed({ color, type }: DeckCard) {
+		if (type == CardType.WILD_DRAW_FOUR) return true;
+		if (this.drawAmount < 1) {
+			if (type == this.lastCardPlayed!.type) return true;
+			if (color == this.lastCardPlayed!.color) return true;
+			if (type == CardType.WILD) return true;
 		} else {
-			return false;
+			if (type == CardType.DRAW_TWO && this.lastCardPlayed!.type == type)
+				return true;
 		}
+
+		return false;
 	}
 
 	// Messages
@@ -436,7 +449,7 @@ export class UnoGame {
 				author: {
 					name: "Discord Uno",
 				},
-				description: `Current turn: <@!${this.getCurrentPlayer().id}>`,
+				description: `Current turn: <@!${this.getCurrentPlayer().id}> \nOrder: ${this.clockwiseOrder ? '⏫' : '⏬'}`,
 				fields: [
 					{
 						name: "Current card",

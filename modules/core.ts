@@ -13,7 +13,7 @@ import {
 } from "harmony";
 import { UnoGame, getPanelEmbedAndButtons } from "uno";
 import { decks, DeckType } from "deck";
-import { CardColor } from "cards";
+import { CardColor, CardType } from "cards";
 
 /**
  * First argument is the guild id
@@ -33,7 +33,7 @@ export default class Events extends Extension {
 			});
 			return cmd;
 		});
-		if ((await this.client.interactions.commands.all()).array().length != 2) {
+		if ((await this.client.interactions.commands.all()).array().length != 3) {
 			this.client.interactions.commands.bulkEdit([
 				{
 					name: "createpanel",
@@ -52,6 +52,10 @@ export default class Events extends Extension {
 						},
 					],
 				},
+				{
+					name: "help",
+					description: "Get info regarding this bot",
+				},
 			]);
 		}
 	}
@@ -62,11 +66,26 @@ export default class Events extends Extension {
 		if (i.guild == undefined || i.channel == undefined) return;
 		if (i.message.author.id != this.client.user!.id) return;
 
+		if (games.has(i.guild.id)) {
+			const game = games.get(i.guild.id);
+			if (game!.started && game!.getPlayer(i.user.id) == undefined) {
+				return await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "You are not in the game!",
+							description: "Please wait for the current game to end to join.",
+						}).setColor("RED"),
+					],
+				});
+			}
+		}
+
 		switch (i.customID.toLowerCase()) {
 			// Creation
 			case "creategame": {
 				if (games.has(i.guild.id)) {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -127,15 +146,19 @@ export default class Events extends Extension {
 						if (!isMessageComponentInteraction(res)) return;
 						const deck = DeckType.Classic; // Will be fetched soon:tm:
 						if (games.has(i.guild.id)) {
-							return await res.message.edit({
-								embeds: [
-									new Embed({
-										title: "Unable to create game!",
-										description:
-											"This server already has a game in progress. Please wait for it to end.",
-									}).setColor("RED"),
-								],
-							});
+							try {
+								return await res.message.edit({
+									embeds: [
+										new Embed({
+											title: "Unable to create game!",
+											description:
+												"This server already has a game in progress. Please wait for it to end.",
+										}).setColor("RED"),
+									],
+								});
+							} catch {
+								return;
+							}
 						} else {
 							games.set(
 								i.guild.id,
@@ -163,7 +186,7 @@ export default class Events extends Extension {
 							//i.channel.pinMessage(game.message);
 
 							// TODO (When done with bot): Add the ability to add rules like 7-0, etc
-							i.editResponse({
+							return i.editResponse({
 								embeds: [
 									new Embed({
 										title: "Game created!",
@@ -175,7 +198,6 @@ export default class Events extends Extension {
 						}
 					}
 				}
-				break;
 			}
 
 			case "join": {
@@ -204,12 +226,12 @@ export default class Events extends Extension {
 						components,
 					});
 
-					i.reply({
+					return i.reply({
 						ephemeral: true,
 						content: "You have joined the game!",
 					});
 				} else {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -219,14 +241,13 @@ export default class Events extends Extension {
 						],
 					});
 				}
-				break;
 			}
 
 			case "start": {
 				if (games.has(i.guild.id)) {
 					const game = games.get(i.guild.id)!;
 					if (game.creator.id != i.user.id) {
-						await i.reply({
+						return await i.reply({
 							ephemeral: true,
 							embeds: [
 								new Embed({
@@ -237,7 +258,7 @@ export default class Events extends Extension {
 						});
 					} else {
 						if (game.players.length < 3 && i.user.id != "314166178144583682") {
-							await i.reply({
+							return await i.reply({
 								ephemeral: true,
 								embeds: [
 									new Embed({
@@ -270,7 +291,7 @@ export default class Events extends Extension {
 						}
 					}
 				} else {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -280,7 +301,7 @@ export default class Events extends Extension {
 						],
 					});
 				}
-				break;
+				return;
 			}
 
 			case "cancel": {
@@ -290,7 +311,7 @@ export default class Events extends Extension {
 						game.creator.id != i.user.id &&
 						!i.member?.permissions.has("ADMINISTRATOR")
 					) {
-						await i.reply({
+						return await i.reply({
 							ephemeral: true,
 							embeds: [
 								new Embed({
@@ -329,7 +350,7 @@ export default class Events extends Extension {
 						games.delete(i.guild.id);
 					}
 				} else {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -339,7 +360,7 @@ export default class Events extends Extension {
 						],
 					});
 				}
-				break;
+				return;
 			}
 		}
 
@@ -348,7 +369,7 @@ export default class Events extends Extension {
 		if (game == undefined || game.started == false) return;
 
 		if (!game.getPlayerIDArray().includes(i.user.id)) {
-			await i.reply({
+			return await i.reply({
 				ephemeral: true,
 				embeds: [
 					new Embed({
@@ -357,7 +378,6 @@ export default class Events extends Extension {
 					}).setColor("RED"),
 				],
 			});
-			return;
 		}
 
 		switch (i.customID.toLowerCase()) {
@@ -367,7 +387,7 @@ export default class Events extends Extension {
 			}
 			case "draw": {
 				if (game.getCurrentPlayer().id != i.user.id) {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -390,12 +410,15 @@ export default class Events extends Extension {
 						) {
 							giveCard();
 						} else {
+							game.showGameEmbed();
 							await i.reply({
 								ephemeral: true,
 								embeds: [
 									new Embed({
 										title: "Cards drawn!",
-										description: `You have drawn ${drawn} cards and got a \`${game.cardToString(
+										description: `You have drawn ${drawn} card${
+											drawn > 1 ? "s" : ""
+										} and got a \`${game.cardToString(
 											game.getCurrentPlayer().cards[
 												game.getCurrentPlayer().cards.length - 1
 											]
@@ -439,33 +462,121 @@ export default class Events extends Extension {
 
 							if (
 								res == undefined ||
-								(isMessageComponentInteraction(res) && i.customID == "play")
+								(isMessageComponentInteraction(res) && res.customID == "play")
 							) {
-								const { color, type } =
+								let { color, type } =
 									game.getCurrentPlayer().cards[
 										game.getCurrentPlayer().cards.length - 1
 									];
 								if (color == CardColor.WILD) {
-									//TODO: Implement color picking
-								} 
+									if (res == undefined) {
+										color = [
+											CardColor.BLUE,
+											CardColor.GREEN,
+											CardColor.RED,
+											CardColor.YELLOW,
+										][Math.floor(Math.random() * 4)];
+									} else {
+										await i.editResponse({
+											embeds: [
+												new Embed({
+													title: "Choose a color!",
+													description: "Please select your wild color!",
+													footer: {
+														text: "Random color will be selected if you don't respond within 15 seconds",
+													},
+												}).setColor("LIGHT_GREY"),
+											],
+											components: [
+												{
+													type: 1,
+													components: [
+														{
+															type: 2,
+															label: "Blue",
+															custom_id: "blue",
+															style: ButtonStyle.BLURPLE,
+														},
+														{
+															type: 2,
+															label: "Red",
+															custom_id: "red",
+															style: ButtonStyle.RED,
+														},
+														{
+															type: 2,
+															label: "Green",
+															custom_id: "green",
+															style: ButtonStyle.GREEN,
+														},
+														{
+															type: 2,
+															label: "Yellow",
+															custom_id: "yellow",
+															style: ButtonStyle.GREY,
+														},
+													],
+												},
+											] as MessageComponentPayload[],
+										});
+
+										const [selectedColor] = await i.client.waitFor(
+											"interactionCreate",
+											(e) =>
+												isMessageComponentInteraction(e) &&
+												["blue", "red", "yellow", "green"].includes(
+													e.customID
+												) &&
+												e.user.id == game.getCurrentPlayer().id,
+											15 * 1000
+										);
+
+										if (selectedColor == undefined) {
+											color = [
+												CardColor.BLUE,
+												CardColor.GREEN,
+												CardColor.RED,
+												CardColor.YELLOW,
+											][Math.floor(Math.random() * 4)];
+										} else {
+											if (!isMessageComponentInteraction(selectedColor))
+												throw new Error("Invalid response somehow");
+											const selected = selectedColor.customID;
+											for (const c of [
+												CardColor.BLUE,
+												CardColor.GREEN,
+												CardColor.RED,
+												CardColor.YELLOW,
+											]) {
+												if (
+													selected.toLowerCase() == c.toString().toLowerCase()
+												)
+													color = c;
+											}
+										}
+									}
+								}
+
 								game.playCard(color, type);
-								await i.reply({
+								await i.editResponse({
 									embeds: [
 										new Embed({
 											title: "Card played!",
 											description: "You have played your card!",
 										}).setColor("GREEN"),
 									],
+									components: [],
 								});
 							} else {
 								game.nextTurn();
-								await i.reply({
+								await i.editResponse({
 									embeds: [
 										new Embed({
 											title: "Card held!",
 											description: "You have kept your card",
 										}).setColor("GREEN"),
 									],
+									components: [],
 								});
 							}
 						}
@@ -535,7 +646,7 @@ export default class Events extends Extension {
 				.cards.filter((c) => c.color == color);
 
 			if (cards.length == 0) {
-				await i.reply({
+				return await i.reply({
 					ephemeral: true,
 					embeds: [
 						new Embed({
@@ -591,7 +702,7 @@ export default class Events extends Extension {
 					}
 				}
 
-				await i.reply({
+				return await i.reply({
 					ephemeral: true,
 					embeds: [
 						new Embed({
@@ -612,7 +723,7 @@ export default class Events extends Extension {
 		if (i.customID == "call-uno") {
 			const targetPlayer = game.players.filter((p) => !p.calledUno)[0];
 			if (targetPlayer == null) {
-				await i.reply({
+				return await i.reply({
 					ephemeral: true,
 					embeds: [
 						new Embed({
@@ -625,7 +736,7 @@ export default class Events extends Extension {
 			} else {
 				if (targetPlayer.id == i.user.id) {
 					targetPlayer.calledUno = true;
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -636,7 +747,7 @@ export default class Events extends Extension {
 					});
 				} else {
 					game.givePlayerCards(2, targetPlayer);
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -647,13 +758,12 @@ export default class Events extends Extension {
 					});
 				}
 			}
-			return;
 		}
 
 		if (i.customID == "uno") {
 			if (game.getCurrentPlayer().id == i.user.id) {
 				if (game.getCurrentPlayer().calledUno) {
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -664,7 +774,7 @@ export default class Events extends Extension {
 					});
 				} else {
 					game.getCurrentPlayer().calledUno = true;
-					await i.reply({
+					return await i.reply({
 						ephemeral: true,
 						embeds: [
 							new Embed({
@@ -675,7 +785,7 @@ export default class Events extends Extension {
 					});
 				}
 			} else {
-				await i.reply({
+				return await i.reply({
 					ephemeral: true,
 					embeds: [
 						new Embed({
@@ -685,7 +795,6 @@ export default class Events extends Extension {
 					],
 				});
 			}
-			return;
 		}
 
 		// Viewing cards
@@ -717,43 +826,178 @@ export default class Events extends Extension {
 		}
 
 		if (game.getCurrentPlayer().id != i.user.id) {
-			await i.reply({
-				ephemeral: true,
-				embeds: [
-					new Embed({
-						title: "Not your turn!",
-						description: "It's not your turn!",
-					}).setColor("RED"),
-				],
-			});
+			try {
+				return await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Not your turn!",
+							description: "It's not your turn!",
+						}).setColor("RED"),
+					],
+				});
+			} catch {
+				return;
+			}
 		}
 
 		// Playing cards
-		const card = game.stringToCard(i.customID);
-		if (!game.canCardBePlayed(card)) {
-			await i.reply({
-				ephemeral: true,
-				embeds: [
-					new Embed({
-						title: "Unplayable card!",
-						description: "You can't play this card!",
-					}).setColor("RED"),
-				],
-			});
-		} else {
-			if (game.getCurrentPlayer().cards.length == 1) {
-				games.delete(i.guild.id);
+		if (!i.customID.includes("-")) return;
+		if (i.customID.toLowerCase().startsWith("w-")) {
+			if (
+				!game.doesCurrentPlayerHaveCard({
+					color: CardColor.WILD,
+					type:
+						i.customID.toLowerCase() == "w-wild"
+							? CardType.WILD
+							: CardType.WILD_DRAW_FOUR,
+				})
+			) {
+				return await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Unable to play!",
+							description: "You do not have this card!",
+						}).setColor("RED"),
+					],
+				});
 			}
-			game.playCard(card.color, card.type);
 			await i.reply({
 				ephemeral: true,
 				embeds: [
 					new Embed({
-						title: "Card played!",
-						description: `You played \`${game.cardToString(card)}\``,
-					}).setColor("GREEN"),
+						title: "Choose a color!",
+						description: "Please select your wild color!",
+						footer: {
+							text: "Random color will be selected if you don't respond within 15 seconds",
+						},
+					}).setColor("LIGHT_GREY"),
 				],
+				components: [
+					{
+						type: 1,
+						components: [
+							{
+								type: 2,
+								label: "Blue",
+								custom_id: "blue",
+								style: ButtonStyle.BLURPLE,
+							},
+							{
+								type: 2,
+								label: "Red",
+								custom_id: "red",
+								style: ButtonStyle.RED,
+							},
+							{
+								type: 2,
+								label: "Green",
+								custom_id: "green",
+								style: ButtonStyle.GREEN,
+							},
+							{
+								type: 2,
+								label: "Yellow",
+								custom_id: "yellow",
+								style: ButtonStyle.GREY,
+							},
+						],
+					},
+				] as MessageComponentPayload[],
 			});
+
+			const [res] = await i.client.waitFor(
+				"interactionCreate",
+				(e) =>
+					isMessageComponentInteraction(e) &&
+					["blue", "red", "yellow", "green"].includes(e.customID) &&
+					e.user.id == i.user.id &&
+					game.getCurrentPlayer().id == e.user.id,
+				15000
+			);
+
+			let color = [
+				CardColor.BLUE,
+				CardColor.GREEN,
+				CardColor.RED,
+				CardColor.YELLOW,
+			][Math.floor(Math.random() * 4)];
+
+			if (res != undefined && isMessageComponentInteraction(res)) {
+				for (const c of [
+					CardColor.BLUE,
+					CardColor.GREEN,
+					CardColor.RED,
+					CardColor.YELLOW,
+				]) {
+					if (res.customID.toLowerCase() == c.toString().toLowerCase())
+						color = c;
+				}
+			}
+
+			if (game.getCurrentPlayer().id != i.user.id) {
+				if (res != undefined) {
+					i.editResponse({
+						embeds: [
+							new Embed({
+								title: "Unable to play!",
+								description: "It's not your turn!",
+							}).setColor("RED"),
+						],
+						components: [],
+					});
+				}
+			} else {
+				if (res != undefined) {
+					i.editResponse({
+						embeds: [
+							new Embed({
+								title: "Card played!",
+								description: "You have selected your wild and played it",
+							}).setColor("LIGHT_GREY"),
+						],
+						components: [],
+					});
+				}
+				game.playCard(
+					color,
+					i.customID.toLowerCase() == "w-wild"
+						? CardType.WILD
+						: CardType.WILD_DRAW_FOUR
+				);
+			}
+		} else {
+			const card = game.stringToCard(i.customID);
+			console.log(card, "by retard", i.user.username);
+			if (
+				!game.canCardBePlayed(card) ||
+				!game.doesCurrentPlayerHaveCard(card)
+			) {
+				return await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Unplayable card!",
+							description: "You can't play this card!",
+						}).setColor("RED"),
+					],
+				});
+			} else {
+				if (game.getCurrentPlayer().cards.length == 1) {
+					games.delete(i.guild.id);
+				}
+				game.playCard(card.color, card.type);
+				return await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Card played!",
+							description: `You played \`${game.cardToString(card)}\``,
+						}).setColor("GREEN"),
+					],
+				});
+			}
 		}
 	}
 }
