@@ -470,7 +470,7 @@ export class UnoGame {
 					},
 				],
 				footer: {
-					text: "Press the Play/Draw button to do an action! | Time limit: 30 seconds",
+					text: "Press the View cards or Draw button to do an action! | Time limit: 30 seconds",
 				},
 			}).setColor(this.cardColorToEmbedColor(this.lastCardPlayed!.color)),
 			components: [
