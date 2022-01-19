@@ -33,7 +33,7 @@ export default class Events extends Extension {
 			});
 			return cmd;
 		});
-		if ((await this.client.interactions.commands.all()).array().length != 3) {
+		if ((await this.client.interactions.commands.all()).array().length != 4) {
 			this.client.interactions.commands.bulkEdit([
 				{
 					name: "createpanel",
@@ -55,6 +55,10 @@ export default class Events extends Extension {
 				{
 					name: "help",
 					description: "Get info regarding this bot",
+				},
+				{
+					name: "stop",
+					description: "Stop a game",
 				},
 			]);
 		}
@@ -182,10 +186,6 @@ export default class Events extends Extension {
 								embed,
 							});
 
-							// Doesn't work
-							//i.channel.pinMessage(game.message);
-
-							// TODO (When done with bot): Add the ability to add rules like 7-0, etc
 							return i.editResponse({
 								embeds: [
 									new Embed({
@@ -477,6 +477,9 @@ export default class Events extends Extension {
 											CardColor.YELLOW,
 										][Math.floor(Math.random() * 4)];
 									} else {
+										await res.respond({
+											flags: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
+										});
 										await i.editResponse({
 											embeds: [
 												new Embed({
@@ -1067,6 +1070,72 @@ class Commands extends ApplicationCommandsModule {
 					}).setColor(
 						["RED", "GREEN", "BLUE", "YELLOW"][Math.floor(Math.random() * 4)]
 					),
+				],
+			});
+		}
+	}
+
+	@slash()
+	async help(i: ApplicationCommandInteraction) {
+		await i.reply({
+			ephemeral: true,
+			embeds: [
+				new Embed({
+					title: "DisUno",
+					description:
+						"A crappy discord bot to play uno, developed by [Blocks_n_more#5526](https://twitter.com/blocksnmore). Source code: [Github](https://github.com/blocksnmore/disuno)",
+				}).setColor("RED"),
+			],
+		});
+	}
+
+	@slash()
+	async stop(i: ApplicationCommandInteraction) {
+		if (i.member == undefined || i.channel == undefined) return;
+		if (i.member.permissions.has("MANAGE_SERVER")) {
+			if (games.has(i.guild!.id)) {
+				const game = games.get(i.guild!.id)!;
+				const { embed, components } = getPanelEmbedAndButtons();
+
+				game.message!.edit({
+					embeds: [
+						embed.setFooter(
+							"Previous game has been canceled by an Administrator!"
+						),
+					],
+					components,
+				});
+
+				games.delete(i.guild!.id);
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "Game canceled!",
+							description: "The game has been canceled.",
+						}).setColor("GREEN"),
+					],
+				});
+			} else {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							title: "No game running!",
+							description: "There is no game currently running in this server.",
+						}).setColor("RED"),
+					],
+				});
+			}
+		} else {
+			await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						title: "Missing permission!",
+						description:
+							"You need the `MANAGE_SERVER` permission to create a game.",
+					}).setColor("RED"),
 				],
 			});
 		}
