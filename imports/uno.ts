@@ -451,7 +451,7 @@ export class UnoGame {
 				},
 				description: `Current turn: <@!${
 					this.getCurrentPlayer().id
-				}> \nOrder: ${this.clockwiseOrder ? "⬇" : "⬆"}`,
+				}> \nOrder: ${this.clockwiseOrder ? "⬇" : "⬆"}\n${this.drawAmount > 0 ? `Current stack: \`${this.drawAmount}\`` : ""}`,
 				fields: [
 					{
 						name: "Current card",

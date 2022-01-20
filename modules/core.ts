@@ -477,9 +477,13 @@ export default class Events extends Extension {
 											CardColor.YELLOW,
 										][Math.floor(Math.random() * 4)];
 									} else {
-										await res.respond({
-											flags: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
-										});
+										try {
+											await res.respond({
+												flags: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
+											});
+										} catch {
+											// Do noting
+										}
 										await i.editResponse({
 											embeds: [
 												new Embed({
@@ -725,7 +729,9 @@ export default class Events extends Extension {
 		};
 
 		if (i.customID == "call-uno") {
-			const targetPlayer = game.players.filter((p) => !p.calledUno)[0];
+			const targetPlayer = game.players.filter(
+				(p) => !p.calledUno && p.cards.length < 2
+			)[0];
 			if (targetPlayer == null) {
 				return await i.reply({
 					ephemeral: true,
@@ -740,6 +746,7 @@ export default class Events extends Extension {
 			} else {
 				if (targetPlayer.id == i.user.id) {
 					targetPlayer.calledUno = true;
+					game.showGameEmbed(false);
 					return await i.reply({
 						ephemeral: true,
 						embeds: [
@@ -751,6 +758,7 @@ export default class Events extends Extension {
 					});
 				} else {
 					game.givePlayerCards(2, targetPlayer);
+					game.showGameEmbed(false);
 					return await i.reply({
 						ephemeral: true,
 						embeds: [
@@ -1096,15 +1104,18 @@ class Commands extends ApplicationCommandsModule {
 			if (games.has(i.guild!.id)) {
 				const game = games.get(i.guild!.id)!;
 				const { embed, components } = getPanelEmbedAndButtons();
-
-				game.message!.edit({
-					embeds: [
-						embed.setFooter(
-							"Previous game has been canceled by an Administrator!"
-						),
-					],
-					components,
-				});
+				try {
+					game.message!.edit({
+						embeds: [
+							embed.setFooter(
+								"Previous game has been canceled by an Administrator!"
+							),
+						],
+						components,
+					});
+				} catch {
+					//Do nothing
+				}
 
 				games.delete(i.guild!.id);
 				await i.reply({
