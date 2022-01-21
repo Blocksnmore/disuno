@@ -1,0 +1,170 @@
+import { ButtonInteraction } from "interaction";
+import {
+	games,
+	UnoGame,
+	cardToString,
+	cardToButtonId,
+	removeDiscriminator,
+} from "game";
+import {
+	MessageComponentInteraction,
+	Embed,
+	fragment,
+	BotUI,
+	ActionRow,
+	Button,
+} from "harmony";
+
+export default class GameplayInteractions extends ButtonInteraction {
+	priorty = 3;
+
+	async execute(i: MessageComponentInteraction) {
+		const game = games.get(i.guild!.id)!;
+		switch (i.customID) {
+			case "hand": {
+				return false;
+			}
+
+			case "draw": {
+				if (game.currentPlayer.id != i.user.id) {
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								...UnoGame.embedTemplate,
+								title: "Unable to draw",
+								description: "It is not your turn!",
+							}).setColor("RED"),
+						],
+					});
+				} else {
+					if (game.currentPlayer.candraw) {
+						if (game.gameDeck.length < 1) {
+							game.nextTurn();
+							await i.reply({
+								ephemeral: true,
+								embeds: [
+									new Embed({
+										...UnoGame.embedTemplate,
+										title: "Unable to draw",
+										description: "The deck is empty so you have been skipped!",
+									}).setColor("RED"),
+								],
+							});
+						} else {
+							let drawAmount = 0;
+							const drawCard = async () => {
+								drawAmount++;
+								if (game.gameDeck.length < 1) {
+									await i.reply({
+										ephemeral: true,
+										embeds: [
+											new Embed({
+												...UnoGame.embedTemplate,
+												title: "Unable to draw",
+												description:
+													"The deck is empty so you have been skipped!",
+											}).setColor("RED"),
+										],
+									});
+								} else {
+									const card = game.gameDeck.pop()!;
+									game.currentPlayer.cards.push(card);
+									if (!game.isPlayableCard(card)) {
+										drawCard();
+									} else {
+										game.currentPlayer.candraw = false;
+										game.showGameEmbed(false);
+										await i.reply({
+											ephemeral: true,
+											embeds: [
+												new Embed({
+													...UnoGame.embedTemplate,
+													title: "Cards drawn",
+													description: `You have drawn ${drawAmount} card and received a ${cardToString(
+														card
+													)}!`,
+												}).setColor("GREEN"),
+											],
+											components: (
+												<>
+													<ActionRow>
+														<Button
+															style="green"
+															label="Play"
+															id={cardToButtonId(card)}
+														/>
+														<Button style="grey" label="Keep" id="keep" />
+													</ActionRow>
+												</>
+											),
+										});
+									}
+								}
+							};
+
+							drawCard();
+						}
+					} else {
+						await i.reply({
+							ephemeral: true,
+							embeds: [
+								new Embed({
+									...UnoGame.embedTemplate,
+									title: "Unable to draw",
+									description: "You have already drawn a card this turn!",
+								}).setColor("RED"),
+							],
+						});
+					}
+				}
+				return false;
+			}
+
+			case "keep": {
+				if (game.currentPlayer.id != i.user.id) {
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								...UnoGame.embedTemplate,
+								title: "Unable to keep",
+								description: "It is not your turn!",
+							}).setColor("RED"),
+						],
+					});
+				} else {
+					if (game.currentPlayer.candraw) {
+						await i.reply({
+							ephemeral: true,
+							embeds: [
+								new Embed({
+									...UnoGame.embedTemplate,
+									title: "Unable to keep",
+									description: "You have not drawn a card!",
+								}).setColor("RED"),
+							],
+						});
+					} else {
+						game.currentPlayer.candraw = true;
+						game.lastAction = `${removeDiscriminator(
+							i.user.username
+						)} has kept their card`;
+						game.nextTurn();
+						await i.reply({
+							ephemeral: true,
+							embeds: [
+								new Embed({
+									...UnoGame.embedTemplate,
+									title: "Card kept",
+									description: "You have kept your card!",
+								}).setColor("GREEN"),
+							],
+						});
+					}
+				}
+				return false;
+			}
+		}
+	}
+}

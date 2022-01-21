@@ -1,25 +1,8 @@
-import {
-	CommandClient,
-	GatewayIntents,
-	CommandClientOptions,
-	event,
-	SlashBuilder,
-} from "harmony";
+import { CommandClient, GatewayIntents } from "harmony";
+import Commands from "commands";
 import "https://deno.land/x/dotenv@v3.1.0/load.ts";
 
-class Bot extends CommandClient {
-	constructor(options: CommandClientOptions) {
-		super(options);
-		SlashBuilder;
-	}
-
-	@event()
-	public async ready() {
-		console.log(`Online in ${await this.guilds.size()} servers`);
-	}
-}
-
-const bot = new Bot({
+const bot = new CommandClient({
 	prefix: [],
 	owners: ["314166178144583682"],
 	presence: {
@@ -29,22 +12,30 @@ const bot = new Bot({
 			type: "PLAYING",
 		},
 	},
-	mentionPrefix: true,
 	allowDMs: false,
-	spacesAfterPrefix: true,
+	allowBots: false,
 	shardCount: "auto",
-	caseSensitive: false,
 });
 
-for await (const command of Deno.readDir("./modules")) {
-	if (command.isFile) {
-		const cmd = (await import(`./modules/${command.name}`)).default;
+bot.on("ready", async () => {
+	console.log(
+		`DisUNO online as ${bot.user!.tag} in ${await bot.guilds.size()} servers!`
+	);
+	if ((await bot.interactions.commands.all()).size != Commands.length) {
+		bot.interactions.commands.bulkEdit(Commands);
+	}
+});
 
-		bot.extensions.load(cmd);
+for await (const { isFile, name } of Deno.readDir("./extensions")) {
+	if (isFile && (name.endsWith(".ts") || name.endsWith(".tsx"))) {
+		const extension = (await import(`./extensions/${name}`)).default;
+
+		bot.extensions.load(extension);
 	}
 }
 
 bot.connect(Deno.env.get("TOKEN"), [
+	// /createpanel doesn't work without all 4, no clue why
 	GatewayIntents.GUILDS,
 	GatewayIntents.GUILD_MESSAGES,
 	GatewayIntents.GUILD_PRESENCES,

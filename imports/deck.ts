@@ -1,7 +1,7 @@
 import { DeckCard } from "./cards.ts";
 import ClassicCards from "../cards/classic/deck.ts";
 
-export interface DeckInfo {
+export interface DeckType {
 	name: string;
 	id: string;
 	description: string;
@@ -11,7 +11,7 @@ export interface DeckInfo {
 	};
 }
 
-export const decks: DeckInfo[] = [
+export const decks: DeckType[] = [
 	{
 		name: "Classic",
 		id: "classic",
@@ -33,7 +33,7 @@ export const decks: DeckInfo[] = [
 	},
 ];
 
-export enum DeckType {
+export enum Decks {
 	Classic = "classic",
 	Flip = "flip",
 }
