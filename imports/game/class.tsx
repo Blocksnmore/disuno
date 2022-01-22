@@ -26,7 +26,7 @@ export class UnoGame {
 	// Players
 	public players: UnoPlayer[] = [];
 	// Amount of cards in a stack
-	private drawAmount = 0;
+	public drawAmount = 0;
 	// Order
 	private orderDown = true;
 	// Order number
@@ -36,7 +36,7 @@ export class UnoGame {
 	// Starting card amount
 	private startingCards = 7;
 	// Current card - Gets replaced on start
-	private lastPlayedCard: DeckCard = this.gameDeck[0];
+	public lastPlayedCard: DeckCard = this.gameDeck[0];
 	// Action log
 	public lastAction = "Game started";
 
@@ -61,6 +61,7 @@ export class UnoGame {
 			cards: [],
 			candraw: true,
 		});
+		this.showLobbyEmbed();
 	}
 
 	public async startGame() {
@@ -113,45 +114,49 @@ export class UnoGame {
 		this.lastPlayedCard = { color, type };
 		this.currentPlayer.candraw = true;
 
-		switch (type) {
-			case CardType.SKIP: {
-				this.lastAction = `${removeDiscriminator(
-					this.currentPlayer.name
-				)} skipped ${removeDiscriminator(this.nextPlayer.name)}`;
-				this.nextTurn(false);
-				break;
+		if (this.currentPlayer.cards.length == 0) {
+			this.showEndEmbed();
+		} else {
+			switch (type) {
+				case CardType.SKIP: {
+					this.lastAction = `${removeDiscriminator(
+						this.currentPlayer.name
+					)} skipped ${removeDiscriminator(this.nextPlayer.name)}`;
+					this.nextTurn(false);
+					break;
+				}
+
+				case CardType.REVERSE: {
+					this.lastAction = `${removeDiscriminator(
+						this.currentPlayer.name
+					)} reversed the order`;
+					this.orderDown = !this.orderDown;
+					break;
+				}
+
+				case CardType.DRAW_TWO: {
+					this.lastAction = `${removeDiscriminator(this.currentPlayer.name)} ${
+						this.drawAmount < 1 ? "played" : "stacked"
+					} a Plus 2!`;
+					this.drawAmount += 2;
+					break;
+				}
+
+				case CardType.WILD: {
+					this.lastAction = `${removeDiscriminator(this.currentPlayer.name)} ${
+						this.drawAmount < 1 ? "played" : "stacked"
+					} a Plus 4!`;
+					this.drawAmount += 4;
+					break;
+				}
+
+				default: {
+					break;
+				}
 			}
 
-			case CardType.REVERSE: {
-				this.lastAction = `${removeDiscriminator(
-					this.currentPlayer.name
-				)} reversed the order`;
-				this.orderDown = !this.orderDown;
-				break;
-			}
-
-			case CardType.DRAW_TWO: {
-				this.lastAction = `${removeDiscriminator(this.currentPlayer.name)} ${
-					this.drawAmount < 1 ? "played" : "stacked"
-				} a Plus 2!`;
-				this.drawAmount += 2;
-				break;
-			}
-
-			case CardType.WILD: {
-				this.lastAction = `${removeDiscriminator(this.currentPlayer.name)} ${
-					this.drawAmount < 1 ? "played" : "stacked"
-				} a Plus 4!`;
-				this.drawAmount += 4;
-				break;
-			}
-
-			default: {
-				break;
-			}
+			this.nextTurn();
 		}
-
-		this.nextTurn();
 	}
 
 	public nextTurn(show = true) {
@@ -235,6 +240,42 @@ export class UnoGame {
 			player.cards = [];
 			this.givePlayerCards(this.startingCards, player);
 		}
+	}
+
+	private async showEndEmbed() {
+		games.delete(this.guildId);
+
+		await this.message.edit({
+			embeds: [
+				new Embed({
+					...UnoGame.embedTemplate,
+					title: "Game Over!",
+					description: `<@!${this.currentPlayer.id}> won the game!`,
+					fields: [
+						{
+							name: "Final results",
+							value: this.players
+								.map(
+									({ id, cards }) =>
+										`<@!${id}> - \`${
+											cards.length > 0
+												? `${cards.length} Card${cards.length > 1 ? "" : "s"}`
+												: "👑"
+										}\``
+								)
+								.join("\n"),
+						},
+					],
+					footer: {
+						text: "This embed will reset in 5 seconds",
+					},
+				}),
+			],
+		});
+
+		await sleep(5000);
+
+		await this.message.edit(UnoGame.getPanelEmbed());
 	}
 
 	private async showLobbyEmbed() {
@@ -351,7 +392,7 @@ export class UnoGame {
 		return this.players[number];
 	}
 
-	private fetchPlayer(user: string) {
+	public fetchPlayer(user: string) {
 		return this.players.find(({ id }) => id == user);
 	}
 
@@ -370,12 +411,14 @@ export class UnoGame {
 		this.gameDeck = [...this.gameDeck, ...this.fetchPlayer(user)!.cards];
 		this.players = this.players.filter(({ id }) => id != user);
 
-		if (this.hostId == user) {
-			this.hostId = this.players[0].id;
+		if (this.players.length > 0) {
+			if (this.hostId == user) {
+				this.hostId = this.players[0].id;
+			}
 		}
 
 		if (
-			this.players.length == 0 ||
+			this.players.length < 1 ||
 			(this.gameState == UnoGameState.PLAYING && this.players.length == 1)
 		) {
 			this.gameState = UnoGameState.END;

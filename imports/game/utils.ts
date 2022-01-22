@@ -1,4 +1,4 @@
-import { CardColor, DeckCard } from "../cards.ts";
+import { CardColor, DeckCard, CardType } from "../cards.ts";
 import { decks } from "../deck.ts";
 
 export const getRandomUnoColor = () => {
@@ -51,3 +51,37 @@ export const deckIdToDeck = (deckName: string) => {
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const cardToButtonId = ({ type, color }: DeckCard) => color.toLowerCase().substring(1) + type.toLowerCase().replace(/_/g, "-");
+
+export const cardIdToCard = (card: string) => {
+	const [color, type] = card.toLowerCase().split("-");
+		const cardColor = {
+			w: CardColor.WILD,
+			r: CardColor.RED,
+			g: CardColor.GREEN,
+			b: CardColor.BLUE,
+			y: CardColor.YELLOW,
+		}[color] as CardColor;
+
+		const cardType = {
+			0: CardType.ZERO,
+			1: CardType.ONE,
+			2: CardType.TWO,
+			3: CardType.THREE,
+			4: CardType.FOUR,
+			5: CardType.FIVE,
+			6: CardType.SIX,
+			7: CardType.SEVEN,
+			8: CardType.EIGHT,
+			9: CardType.NINE,
+			reverse: CardType.REVERSE,
+			skip: CardType.SKIP,
+			plus_2: CardType.DRAW_TWO,
+			wild: CardType.WILD,
+			plus_4: CardType.WILD_DRAW_FOUR,
+		}[type] as CardType;
+
+		return {
+			color: cardColor,
+			type: cardType,
+		};
+}
