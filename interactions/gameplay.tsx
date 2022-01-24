@@ -21,10 +21,6 @@ export default class GameplayInteractions extends ButtonInteraction {
 	async execute(i: MessageComponentInteraction) {
 		const game = games.get(i.guild!.id)!;
 		switch (i.customID) {
-			case "hand": {
-				return false;
-			}
-
 			case "draw": {
 				if (game.currentPlayer.id != i.user.id) {
 					await i.reply({
@@ -162,6 +158,61 @@ export default class GameplayInteractions extends ButtonInteraction {
 							],
 						});
 					}
+				}
+				return false;
+			}
+
+			case "callout": {
+				if (
+					game.players.filter(
+						({ cards, calledUno }) => cards.length < 2 && !calledUno
+					).length > 0
+				) {
+					let savedSelf = false;
+					let calledOutAmount = 0;
+					for (const player of game.players.filter(
+						({ cards, calledUno }) => cards.length < 2 && !calledUno
+					)) {
+						if (player.id == i.user.id) {
+							player.calledUno = true;
+							savedSelf = true;
+						} else {
+							calledOutAmount++;
+							game.givePlayerCards(2, player);
+						}
+					}
+					game.lastAction = `${removeDiscriminator(
+						i.user.tag
+					)} called out ${calledOutAmount} player${
+						calledOutAmount > 1 ? "s" : ""
+					} for not saying UNO!`;
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								...UnoGame.embedTemplate,
+								title: "Callout!",
+								description: `You have called out ${calledOutAmount} player${
+									calledOutAmount > 1 ? "s" : ""
+								} for not saying UNO!${
+									savedSelf ? "\nAnd called UNO yourself" : ""
+								}`,
+							}).setColor("RED"),
+						],
+					});
+					game.showGameEmbed(false);
+				} else {
+					await i.reply({
+						ephemeral: true,
+						embeds: [
+							new Embed({
+								...UnoGame.embedTemplate,
+								title: "Callout failed!",
+								description:
+									"Nobody currently has 1 card left that hasn't called uno!",
+							}).setColor("RED"),
+						],
+					});
 				}
 				return false;
 			}

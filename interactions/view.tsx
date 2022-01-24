@@ -6,12 +6,20 @@ import {
 	BotUI,
 	ActionRow,
 	Button,
+	MessageComponentPayload,
+	ButtonStyle,
 } from "harmony";
-import { games, UnoGame, cardColorToEmbedColor, cardToButtonId } from "game";
+import {
+	games,
+	UnoGame,
+	cardColorToEmbedColor,
+	cardToButtonId,
+	formatString,
+} from "game";
 import { CardColor, DeckCard, CardType } from "cards";
 
 export default class ManageGame extends ButtonInteraction {
-	priorty = 5;
+	priorty = 4;
 
 	async execute(i: MessageComponentInteraction) {
 		if (i.guild == undefined) return false;
@@ -43,7 +51,8 @@ export default class ManageGame extends ButtonInteraction {
 						new Embed({
 							...UnoGame.embedTemplate,
 							title: "Your hand",
-							description: "Select a color to view/play",
+							description:
+								"Select a color to view/play\nTo refresh this page click the `View Cards` button again.",
 						}).setColor(cardColorToEmbedColor(game.lastPlayedCard.color)),
 					],
 					components: (
@@ -110,66 +119,51 @@ export default class ManageGame extends ButtonInteraction {
 					cards[card.type] = cards[card.type] ?? 1;
 				}
 
-				const buttons = <></>;
-				let currentArray = <></>;
+				const buttons: MessageComponentPayload[] = [];
+				let currentArray: MessageComponentPayload[] = [];
 
 				for (const key in cards) {
 					const cardCount = cards[key];
-					currentArray.push(
-						<Button
-							style={
-								(color == CardColor.YELLOW || color == CardColor.WILD
-									? "grey"
-									: color == CardColor.BLUE
-									? "blurple"
-									: color.toString().toLowerCase()) as
-									| "red"
-									| "blurple"
-									| "green"
-									| "grey"
-							}
-							id={cardToButtonId({ type: key as CardType, color })}
-							label={`${key} ${cardCount > 1 ? `x${cardCount}` : ""}`}
-							disabled={!playableCard({ type: key as CardType, color })}
-						/>
-					);
+					currentArray.push({
+						type: 2,
+						style:
+							color == CardColor.YELLOW || color == CardColor.WILD
+								? ButtonStyle.GREY
+								: color == CardColor.BLUE
+								? ButtonStyle.BLURPLE
+								: color == CardColor.RED
+								? ButtonStyle.RED
+								: ButtonStyle.GREEN,
+						custom_id: cardToButtonId({ type: key.replace(/-/g, "_") as CardType, color }),
+						label: `${formatString(key.replace(/_/g, " "))}${
+							cardCount > 1 ? ` x${cardCount}` : ""
+						}`,
+						disabled: !playableCard({ type: key as CardType, color }),
+					});
 
 					if (currentArray.length == 5) {
-						buttons.push(<ActionRow>{currentArray}</ActionRow>);
-						currentArray = <></>;
+						buttons.push({ type: 1, components: currentArray });
+						currentArray = [];
 					}
 				}
 
 				if (currentArray.length > 0) {
-					buttons.push(<ActionRow>{currentArray}</ActionRow>);
+					buttons.push({ type: 1, components: currentArray });
 				}
 
 				await i.editResponse({
+					ephemeral: true,
 					embeds: [
 						new Embed({
 							...UnoGame.embedTemplate,
 							title: "Your hand",
-							description: "Select a card to play",
+							description:
+								"Select a card to play\nTo refresh this menu click the `View Card` button again.",
 						}).setColor(cardColorToEmbedColor(color)),
 					],
 					components: buttons,
 				});
 
-				return false;
-			}
-
-			default: {
-				await i.reply({
-					ephemeral: true,
-					embeds: [
-						new Embed({
-							...UnoGame.embedTemplate,
-							title: "Unable to complete action",
-							description:
-								"Sorry, this action is unknown so it could not be completed.",
-						}).setColor("RED"),
-					],
-				});
 				return false;
 			}
 		}

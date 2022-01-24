@@ -17,6 +17,7 @@ import {
 	cardToString,
 	removeDiscriminator,
 	sleep,
+	formatString,
 } from "./utils.ts";
 import { games } from "./index.ts";
 
@@ -34,9 +35,12 @@ export class UnoGame {
 	// Game state
 	public gameState = UnoGameState.LOBBY;
 	// Starting card amount
-	private startingCards = 7;
+	private startingCards = 20;
 	// Current card - Gets replaced on start
-	public lastPlayedCard: DeckCard = this.gameDeck[0];
+	public lastPlayedCard: DeckCard = {
+		color: CardColor.PLACEHOLDER,
+		type: CardType.PLACEHOLDER,
+	};
 	// Action log
 	public lastAction = "Game started";
 
@@ -45,9 +49,9 @@ export class UnoGame {
 		public hostId: string,
 		readonly hostUsername: string,
 		private readonly message: Message,
-		private readonly deck: DeckType
+		deck: DeckType
 	) {
-		this.gameDeck = [...deck.cards.cards];
+		this.gameDeck = deck.cards.cards;
 		this.addPlayer(hostId, hostUsername);
 		games.set(guildId, this);
 		this.showLobbyEmbed();
@@ -74,6 +78,7 @@ export class UnoGame {
 					description: "Shuffling the deck...",
 				}),
 			],
+			components: [],
 		});
 
 		for (const _entry of new Array(getRandomInteger(5, 10))) {
@@ -81,14 +86,14 @@ export class UnoGame {
 			this.gameDeck = shuffleArray(this.gameDeck);
 		}
 
-		await sleep(getRandomInteger(1000, 2000));
-
 		this.distributeCards();
+		await sleep(getRandomInteger(1000, 2000));
 		this.showGameEmbed();
 	}
 
 	public isPlayableCard({ color, type }: DeckCard) {
 		if (type == CardType.WILD_DRAW_FOUR) return true;
+		if (type == CardType.WILD) color = CardColor.WILD;
 
 		if (this.drawAmount < 1) {
 			if (color == this.lastPlayedCard.color) return true;
@@ -106,13 +111,34 @@ export class UnoGame {
 	}
 
 	public playCard({ color, type }: DeckCard) {
-		if ([CardType.WILD_DRAW_FOUR, CardType.WILD].includes(type)) {
-			color = CardColor.WILD;
+		this.lastPlayedCard = { color, type };
+		this.gameDeck.push({
+			...this.lastPlayedCard,
+			color: [CardType.WILD_DRAW_FOUR, CardType.WILD].includes(type)
+				? CardColor.WILD
+				: color,
+		});
+		this.currentPlayer.candraw = true;
+
+		const newCards = [];
+		let removedCard = false;
+
+		for (const card of this.currentPlayer.cards) {
+			if (
+				card.color ==
+					([CardType.WILD_DRAW_FOUR, CardType.WILD].includes(type)
+						? CardColor.WILD
+						: color) &&
+				card.type == type &&
+				!removedCard
+			) {
+				removedCard = true;
+			} else {
+				newCards.push(card);
+			}
 		}
 
-		this.gameDeck.push(this.lastPlayedCard);
-		this.lastPlayedCard = { color, type };
-		this.currentPlayer.candraw = true;
+		this.currentPlayer.cards = newCards;
 
 		if (this.currentPlayer.cards.length == 0) {
 			this.showEndEmbed();
@@ -143,6 +169,13 @@ export class UnoGame {
 				}
 
 				case CardType.WILD: {
+					this.lastAction = `${removeDiscriminator(
+						this.currentPlayer.name
+					)} Changed the color to ${formatString(color)}`;
+					break;
+				}
+
+				case CardType.WILD_DRAW_FOUR: {
 					this.lastAction = `${removeDiscriminator(this.currentPlayer.name)} ${
 						this.drawAmount < 1 ? "played" : "stacked"
 					} a Plus 4!`;
@@ -199,7 +232,7 @@ export class UnoGame {
 		return false;
 	}
 
-	private givePlayerCards(amount: number, player = this.currentPlayer) {
+	public givePlayerCards(amount: number, player = this.currentPlayer) {
 		for (const _entry of new Array(amount)) {
 			const card = this.gameDeck.pop();
 			if (card == undefined) return;
@@ -229,10 +262,14 @@ export class UnoGame {
 					CardType.SEVEN,
 					CardType.EIGHT,
 					CardType.NINE,
-				].includes(card.type)
+				].includes(card.type) &&
+				this.lastPlayedCard !=
+					{
+						color: CardColor.PLACEHOLDER,
+						type: CardType.PLACEHOLDER,
+					}
 			) {
 				this.lastPlayedCard = card;
-				return;
 			}
 		}
 
@@ -240,6 +277,18 @@ export class UnoGame {
 			player.cards = [];
 			this.givePlayerCards(this.startingCards, player);
 		}
+	}
+
+	public doesCurrentPlayerHaveCard(card: DeckCard) {
+		return (
+			this.currentPlayer.cards.filter(
+				({ color, type }) =>
+					color ==
+						(card.type == CardType.WILD_DRAW_FOUR || card.type == CardType.WILD
+							? CardColor.WILD
+							: card.color) && type == card.type
+			).length > 0
+		);
 	}
 
 	private async showEndEmbed() {
@@ -267,7 +316,7 @@ export class UnoGame {
 						},
 					],
 					footer: {
-						text: "This embed will reset in 5 seconds",
+						text: "This embed will be deleted in 5 seconds",
 					},
 				}),
 			],
@@ -326,6 +375,7 @@ export class UnoGame {
 						{
 							name: "Current player",
 							value: `<@!${this.currentPlayer.id}>`,
+							inline: true,
 						},
 						{
 							name: "Action log",
@@ -337,6 +387,7 @@ export class UnoGame {
 							value: `\`${this.drawAmount} Card${
 								this.drawAmount !== 1 ? "s" : ""
 							}\``,
+							inline: true,
 						},
 						{
 							name: `Order ${this.orderDown ? "⬇" : "⬆"}`,
@@ -348,6 +399,7 @@ export class UnoGame {
 										} <@!${id}> - \`${cards.length} Cards\``
 								)
 								.join("\n"),
+							inline: true,
 						},
 					],
 				}).setColor(cardColorToEmbedColor(this.lastPlayedCard.color)),
@@ -364,8 +416,8 @@ export class UnoGame {
 							id="callout"
 							disabled={
 								this.players.filter(
-									({ cards, calledUno }) => cards.length === 1 && !calledUno
-								).length > 0
+									({ cards, calledUno }) => cards.length < 2 && !calledUno
+								).length < 1
 							}
 						/>
 					</ActionRow>

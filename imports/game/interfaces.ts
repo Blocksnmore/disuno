@@ -9,7 +9,7 @@ export interface UnoPlayer {
 }
 
 export enum UnoGameState {
-	LOBBY,
-	PLAYING,
-	END
+	LOBBY = "LOBBY",
+	PLAYING = "PLAYING",
+	END = "END",
 }

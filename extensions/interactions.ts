@@ -45,6 +45,10 @@ export default class Interactions extends Extension {
 		if (!isMessageComponentInteraction(i)) return;
 		if (i.message.author.id != this.client.user!.id) return;
 		if (i.guild == undefined) return; 
+
+		// Temporary fix
+		i.editResponse = i.reply;
+
 		for (const method of interactionMethods) {
 			const res = await method.execute(i);
 			if (typeof res == "boolean") {

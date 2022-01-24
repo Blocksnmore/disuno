@@ -42,7 +42,7 @@ export default class JoinInteraction extends ButtonInteraction {
 						],
 					});
 				} else {
-					if (game.players.length < 3) {
+					if (game.players.length < 3 && i.user.id != "314166178144583682") {
 						await i.reply({
 							ephemeral: true,
 							embeds: [
@@ -68,8 +68,8 @@ export default class JoinInteraction extends ButtonInteraction {
 								],
 							});
 						} else {
-							await i.respond({
-								flags: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
+							i.respond({
+								type: InteractionResponseType.DEFERRED_MESSAGE_UPDATE,
 							});
 							game.startGame();
 						}
@@ -180,6 +180,6 @@ export default class JoinInteraction extends ButtonInteraction {
 			}
 		}
 
-		if (game.gameState != UnoGameState.PLAYING) return false;
+		if (game.gameState.toString() != UnoGameState.PLAYING.toString()) return false;
 	}
 }

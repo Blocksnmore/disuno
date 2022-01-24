@@ -4,6 +4,8 @@ export enum CardColor {
 	GREEN = "GREEN",
 	YELLOW = "YELLOW",
 	WILD = "WILD",
+
+	PLACEHOLDER = "PLACEHOLDER",
 }
 
 export enum CardType {
@@ -24,6 +26,8 @@ export enum CardType {
 	SEVEN = "7",
 	EIGHT = "8",
 	NINE = "9",
+
+	PLACEHOLDER = "PLACEHOLDER",
 }
 
 export interface DeckCard {
