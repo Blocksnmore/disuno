@@ -11,17 +11,19 @@ export const getRandomInteger = (min: number, max: number) => {
 };
 
 export const shuffleArray = <T>(array: T[]): T[] => {
-	const newArray: T[] = [];
+	for (const _entry of new Array(getRandomInteger(2, 5))) {
+		const newArray: T[] = [];
 
-	for (const entry of array) {
-		if (getRandomInteger(1, 2) === 1) {
-			newArray.push(entry);
-		} else {
-			newArray.unshift(entry);
+		for (const entry of array) {
+			if (getRandomInteger(1, 2) === 1) {
+				newArray.push(entry);
+			} else {
+				newArray.unshift(entry);
+			}
 		}
-	}
 
-	array = newArray;
+		array = newArray;
+	}
 
 	return array;
 };
@@ -57,7 +59,8 @@ export const cardToButtonId = ({ type, color }: DeckCard) =>
 	type.toLowerCase().replace(/_/g, "-");
 
 export const cardIdToCard = (card: string) => {
-	const [color, type] = card.toLowerCase().split("-");
+	const color = card.substring(0, 1).toLowerCase();
+	const type = card.substring(2).toLowerCase().replace(/-/g, "_");
 	const cardColor = {
 		w: CardColor.WILD,
 		r: CardColor.RED,

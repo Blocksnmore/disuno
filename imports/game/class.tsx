@@ -35,7 +35,7 @@ export class UnoGame {
 	// Game state
 	public gameState = UnoGameState.LOBBY;
 	// Starting card amount
-	private startingCards = 20;
+	private startingCards = 7;
 	// Current card - Gets replaced on start
 	public lastPlayedCard: DeckCard = {
 		color: CardColor.PLACEHOLDER,
@@ -112,7 +112,7 @@ export class UnoGame {
 
 	public playCard({ color, type }: DeckCard) {
 		this.lastPlayedCard = { color, type };
-		this.gameDeck.push({
+		this.gameDeck.unshift({
 			...this.lastPlayedCard,
 			color: [CardType.WILD_DRAW_FOUR, CardType.WILD].includes(type)
 				? CardColor.WILD
@@ -184,6 +184,9 @@ export class UnoGame {
 				}
 
 				default: {
+					this.lastAction = `${removeDiscriminator(
+						this.currentPlayer.name
+					)} played a ${cardToString({ color, type })}`;
 					break;
 				}
 			}
@@ -193,7 +196,7 @@ export class UnoGame {
 	}
 
 	public nextTurn(show = true) {
-		if (this.orderDown) {
+		if (!this.orderDown) {
 			this.orderIndex--;
 			if (this.orderIndex < 0) {
 				this.orderIndex = this.players.length - 1;
@@ -208,10 +211,10 @@ export class UnoGame {
 		if (this.drawAmount > 0) {
 			if (!this.doesCurrentPlayerHaveValidPlusCard()) {
 				this.givePlayerCards(this.drawAmount);
-				this.drawAmount = 0;
 				this.lastAction += ` Making ${removeDiscriminator(
 					this.currentPlayer.name
 				)} draw ${this.drawAmount} cards and skipping their turn.`;
+				this.drawAmount = 0;
 				this.nextTurn(show);
 				return;
 			}
@@ -234,9 +237,13 @@ export class UnoGame {
 
 	public givePlayerCards(amount: number, player = this.currentPlayer) {
 		for (const _entry of new Array(amount)) {
+			this.gameDeck = shuffleArray(this.gameDeck);
 			const card = this.gameDeck.pop();
 			if (card == undefined) return;
 			player.cards.push(card);
+			if (player.calledUno) {
+				player.calledUno = false;
+			}
 			this.gameDeck = shuffleArray(this.gameDeck);
 		}
 	}
@@ -316,13 +323,14 @@ export class UnoGame {
 						},
 					],
 					footer: {
-						text: "This embed will be deleted in 5 seconds",
+						text: "This embed will be deleted in 10 seconds",
 					},
 				}),
 			],
+			components: [],
 		});
 
-		await sleep(5000);
+		await sleep(10000);
 
 		await this.message.edit(UnoGame.getPanelEmbed());
 	}
@@ -467,6 +475,10 @@ export class UnoGame {
 			if (this.hostId == user) {
 				this.hostId = this.players[0].id;
 			}
+		}
+
+		if (this.currentPlayer.id == user) {
+			this.nextTurn();
 		}
 
 		if (

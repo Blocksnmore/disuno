@@ -24,6 +24,7 @@ export default class ManageGame extends ButtonInteraction {
 	async execute(i: MessageComponentInteraction) {
 		if (i.guild == undefined) return false;
 		const game = games.get(i.guild.id)!;
+		if (game.fetchPlayer(i.user.id)?.cards == undefined) return;
 
 		const hasColor = (color: CardColor) => {
 			for (const card of game.fetchPlayer(i.user.id)!.cards) {
@@ -61,31 +62,56 @@ export default class ManageGame extends ButtonInteraction {
 								<Button
 									style="red"
 									id="v-r"
-									label="Red"
+									label={`Red x${
+										game
+											.fetchPlayer(i.user.id)!
+											.cards.filter(({ color }) => color == CardColor.RED)
+											.length
+									}`}
 									disabled={!shouldNotBeDisabled(CardColor.RED)}
 								/>
 								<Button
 									style="green"
 									id="v-g"
-									label="Green"
+									label={`Green x${
+										game
+											.fetchPlayer(i.user.id)!
+											.cards.filter(({ color }) => color == CardColor.GREEN)
+											.length
+									}`}
 									disabled={!shouldNotBeDisabled(CardColor.GREEN)}
 								/>
 								<Button
 									style="grey"
 									id="v-y"
-									label="Yellow"
+									label={`Yellow x${
+										game
+											.fetchPlayer(i.user.id)!
+											.cards.filter(({ color }) => color == CardColor.YELLOW)
+											.length
+									}`}
 									disabled={!shouldNotBeDisabled(CardColor.YELLOW)}
 								/>
 								<Button
 									style="blurple"
 									id="v-b"
-									label="Blue"
+									label={`Blue x${
+										game
+											.fetchPlayer(i.user.id)!
+											.cards.filter(({ color }) => color == CardColor.BLUE)
+											.length
+									}`}
 									disabled={!shouldNotBeDisabled(CardColor.BLUE)}
 								/>
 								<Button
 									style="grey"
 									id="v-w"
-									label="Wild"
+									label={`Wild x${
+										game
+											.fetchPlayer(i.user.id)!
+											.cards.filter(({ color }) => color == CardColor.WILD)
+											.length
+									}`}
 									disabled={!shouldNotBeDisabled(CardColor.WILD)}
 								/>
 							</ActionRow>
@@ -134,10 +160,11 @@ export default class ManageGame extends ButtonInteraction {
 								: color == CardColor.RED
 								? ButtonStyle.RED
 								: ButtonStyle.GREEN,
-						custom_id: cardToButtonId({ type: key.replace(/-/g, "_") as CardType, color }),
-						label: `${formatString(key.replace(/_/g, " "))}${
-							cardCount > 1 ? ` x${cardCount}` : ""
-						}`,
+						custom_id: cardToButtonId({
+							type: key.replace(/-/g, "_") as CardType,
+							color,
+						}),
+						label: `${formatString(key.replace(/_/g, " "))} x${cardCount}`,
 						disabled: !playableCard({ type: key as CardType, color }),
 					});
 

@@ -44,7 +44,7 @@ export default class Interactions extends Extension {
 	async interactionCreate(_ext: this, i: Interaction) {
 		if (!isMessageComponentInteraction(i)) return;
 		if (i.message.author.id != this.client.user!.id) return;
-		if (i.guild == undefined) return; 
+		if (i.guild == undefined) return;
 
 		// Temporary fix
 		i.editResponse = i.reply;
@@ -92,8 +92,11 @@ export class SlashCommands extends ApplicationCommandsModule {
 
 	@slash()
 	async createpanel(i: ApplicationCommandInteraction) {
-		if (i.member == undefined || i.channel == undefined) return;
-		if (i.member.permissions.has("MANAGE_SERVER")) {
+		if (
+			i.member != undefined &&
+			i.channel != undefined &&
+			i.member.permissions.has("MANAGE_SERVER")
+		) {
 			const { message } = await i.reply(UnoGame.getPanelEmbed());
 
 			try {
