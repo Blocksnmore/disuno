@@ -9,7 +9,7 @@ import {
 	isMessageComponentInteraction,
 	Embed,
 } from "harmony";
-import { UnoGame } from "game";
+import { UnoGame, games } from "game";
 import { ButtonInteraction } from "interaction";
 
 let interactionMethods: ButtonInteraction[] = [];
@@ -113,6 +113,54 @@ export class SlashCommands extends ApplicationCommandsModule {
 						title: "Missing permission!",
 						description:
 							"You need the `MANAGE_SERVER` permission to create a game.",
+					}).setColor("RED"),
+				],
+			});
+		}
+	}
+
+	@slash()
+	async stop(i: ApplicationCommandInteraction) {
+		if (
+			i.member != undefined &&
+			i.channel != undefined &&
+			i.member.permissions.has("MANAGE_SERVER")
+		) {
+			if (games.has(i.guild!.id)) {
+				const game = games.get(i.guild!.id)!;
+				game.stopGame(false);
+				games.delete(i.guild!.id);
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							...UnoGame.embedTemplate,
+							title: "Game stopped!",
+							description: "The game has been stopped",
+						}).setColor("RED"),
+					],
+				});
+			} else {
+				await i.reply({
+					ephemeral: true,
+					embeds: [
+						new Embed({
+							...UnoGame.embedTemplate,
+							title: "No game running!",
+							description: "There is no game currently running!",
+						}).setColor("RED"),
+					],
+				});
+			}
+		} else {
+			await i.reply({
+				ephemeral: true,
+				embeds: [
+					new Embed({
+						...UnoGame.embedTemplate,
+						title: "Missing permission!",
+						description:
+							"You need the `MANAGE_SERVER` permission to stop a game.",
 					}).setColor("RED"),
 				],
 			});

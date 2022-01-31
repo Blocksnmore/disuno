@@ -1,1 +1,1 @@
-deno run --allow-read --allow-net --allow-env --import-map=imports.json --no-check --config=deno.jsonc index.ts
+deno run --allow-read --allow-net --allow-env --import-map=imports.json --config=deno.jsonc index.ts

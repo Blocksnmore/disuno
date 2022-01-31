@@ -40,8 +40,15 @@ export const cardToString = ({ color, type }: DeckCard) => {
 export const formatString = (msg: string) =>
 	msg.substring(0, 1).toUpperCase() + msg.substring(1).toLowerCase();
 
-export const removeDiscriminator = (user: string) =>
-	user.substring(0, user.length - 5);
+export const removeDiscriminator = (user: string) => {
+	let username = user.split("#")[0];
+
+	if (username.length > 20) {
+		username = username.substring(0, 20) + "...";
+	}
+
+	return username;
+}
 
 export const deckIdToDeck = (deckName: string) => {
 	for (const deck of decks) {

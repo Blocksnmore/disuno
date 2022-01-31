@@ -34,8 +34,6 @@ export class UnoGame {
 	private orderIndex = 0;
 	// Game state
 	public gameState = UnoGameState.LOBBY;
-	// Starting card amount
-	private startingCards = 7;
 	// Current card - Gets replaced on start
 	public lastPlayedCard: DeckCard = {
 		color: CardColor.PLACEHOLDER,
@@ -43,6 +41,11 @@ export class UnoGame {
 	};
 	// Action log
 	public lastAction = "Game started";
+	// Settings
+	public gameSettings = {
+		startingCards: 7,
+		repostMessage: false,
+	};
 
 	constructor(
 		private readonly guildId: string,
@@ -81,7 +84,7 @@ export class UnoGame {
 			components: [],
 		});
 
-		for (const _entry of new Array(getRandomInteger(5, 10))) {
+		for (const _entry of new Array(getRandomInteger(10, 20))) {
 			this.players = shuffleArray(this.players);
 			this.gameDeck = shuffleArray(this.gameDeck);
 		}
@@ -241,9 +244,7 @@ export class UnoGame {
 			const card = this.gameDeck.pop();
 			if (card == undefined) return;
 			player.cards.push(card);
-			if (player.calledUno) {
-				player.calledUno = false;
-			}
+			player.calledUno = false;
 			this.gameDeck = shuffleArray(this.gameDeck);
 		}
 	}
@@ -282,7 +283,7 @@ export class UnoGame {
 
 		for (const player of this.players) {
 			player.cards = [];
-			this.givePlayerCards(this.startingCards, player);
+			this.givePlayerCards(this.gameSettings.startingCards, player);
 		}
 	}
 
@@ -332,7 +333,18 @@ export class UnoGame {
 
 		await sleep(10000);
 
-		await this.message.edit(UnoGame.getPanelEmbed());
+		if (this.gameSettings.repostMessage) {
+			await this.message.edit({
+				embeds: this.message.embeds,
+				components: this.message.components.map((c) => ({
+					...c,
+					components: c.components!.map((b) => ({ ...b, disabled: true })),
+				})),
+			});
+			await this.message.channel.send(UnoGame.getPanelEmbed());
+		} else {
+			await this.message.edit(UnoGame.getPanelEmbed());
+		}
 	}
 
 	private async showLobbyEmbed() {
@@ -468,6 +480,7 @@ export class UnoGame {
 	}
 
 	public onPlayerQuit(user: string) {
+		if (this.fetchPlayer(user) == undefined) return;
 		this.gameDeck = [...this.gameDeck, ...this.fetchPlayer(user)!.cards];
 		this.players = this.players.filter(({ id }) => id != user);
 

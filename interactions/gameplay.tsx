@@ -220,12 +220,19 @@ export default class GameplayInteractions extends ButtonInteraction {
 							new Embed({
 								...UnoGame.embedTemplate,
 								title: "Callout!",
-								description: `You have called out ${calledOutAmount} player${
-									calledOutAmount > 1 ? "s" : ""
-								} for not saying UNO!${
-									savedSelf ? "\nAnd called UNO yourself" : ""
-								}`,
-							}).setColor("RED"),
+								description: [
+									calledOutAmount > 1
+										? `You have called out ${calledOutAmount} player${
+												calledOutAmount !== 1 ? "s" : ""
+										  } for not saying UNO!`
+										: "",
+									savedSelf
+										? `You have${
+												calledOutAmount > 0 ? " also" : ""
+										  } called UNO!`
+										: "",
+								].join(""),
+							}).setColor("GREEN"),
 						],
 					});
 					game.showGameEmbed(false);
