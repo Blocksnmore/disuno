@@ -381,7 +381,15 @@ export class UnoGame {
 	}
 
 	public async showGameEmbed(mention = true) {
-		await this.message.edit({
+		let action;
+
+		if (this.gameSettings.repostMessage && mention) {
+			action = this.message.channel.send;
+		} else {
+			action = this.message.edit;
+		}
+
+		await action({
 			embeds: [
 				new Embed({
 					...UnoGame.embedTemplate,
@@ -474,7 +482,6 @@ export class UnoGame {
 
 	public stopGame(wasHost: boolean) {
 		this.gameState = UnoGameState.END;
-		this.gameState = UnoGameState.END;
 		this.message.edit(UnoGame.getPanelEmbed(wasHost ? "host" : "admin"));
 		games.delete(this.guildId);
 	}
@@ -482,16 +489,15 @@ export class UnoGame {
 	public onPlayerQuit(user: string) {
 		if (this.fetchPlayer(user) == undefined) return;
 		this.gameDeck = [...this.gameDeck, ...this.fetchPlayer(user)!.cards];
+		if (this.currentPlayer.id == user) {
+			this.nextTurn();
+		}
 		this.players = this.players.filter(({ id }) => id != user);
 
 		if (this.players.length > 0) {
 			if (this.hostId == user) {
 				this.hostId = this.players[0].id;
 			}
-		}
-
-		if (this.currentPlayer.id == user) {
-			this.nextTurn();
 		}
 
 		if (
