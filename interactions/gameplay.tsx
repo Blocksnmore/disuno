@@ -34,6 +34,7 @@ export default class GameplayInteractions extends ButtonInteraction {
 						],
 					});
 				} else {
+					game.currentPlayer.calledUno = false;
 					if (game.drawAmount > 0) {
 						await i.reply({
 							ephemeral: true,

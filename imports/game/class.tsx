@@ -243,8 +243,8 @@ export class UnoGame {
 			this.gameDeck = shuffleArray(this.gameDeck);
 			const card = this.gameDeck.pop();
 			if (card == undefined) return;
-			player.cards.push(card);
 			player.calledUno = false;
+			player.cards.push(card);
 			this.gameDeck = shuffleArray(this.gameDeck);
 		}
 	}
@@ -310,6 +310,11 @@ export class UnoGame {
 					description: `<@!${this.currentPlayer.id}> won the game!`,
 					fields: [
 						{
+							name: "Last Played card",
+							value: cardToString(this.lastPlayedCard),
+							inline: true
+						},
+						{
 							name: "Final results",
 							value: this.players
 								.map(
@@ -321,6 +326,7 @@ export class UnoGame {
 										}\``
 								)
 								.join("\n"),
+							inline: true
 						},
 					],
 					footer: {
@@ -333,18 +339,7 @@ export class UnoGame {
 
 		await sleep(10000);
 
-		if (this.gameSettings.repostMessage) {
-			await this.message.edit({
-				embeds: this.message.embeds,
-				components: this.message.components.map((c) => ({
-					...c,
-					components: c.components!.map((b) => ({ ...b, disabled: true })),
-				})),
-			});
-			await this.message.channel.send(UnoGame.getPanelEmbed());
-		} else {
-			await this.message.edit(UnoGame.getPanelEmbed());
-		}
+		await this.message.edit(UnoGame.getPanelEmbed());
 	}
 
 	private async showLobbyEmbed() {
@@ -381,15 +376,7 @@ export class UnoGame {
 	}
 
 	public async showGameEmbed(mention = true) {
-		let action;
-
-		if (this.gameSettings.repostMessage && mention) {
-			action = this.message.channel.send;
-		} else {
-			action = this.message.edit;
-		}
-
-		await action({
+		await this.message.edit({
 			embeds: [
 				new Embed({
 					...UnoGame.embedTemplate,

@@ -34,7 +34,9 @@ export const cardColorToEmbedColor = (color: CardColor) => {
 };
 
 export const cardToString = ({ color, type }: DeckCard) => {
-	return `${formatString(color)} ${formatString(type).replace(/_/g, " ")}`;
+	return `${
+		color == CardColor.WILD ? "" : `${formatString(color)} `
+	}${formatString(type).replace(/_/g, " ")}`;
 };
 
 export const formatString = (msg: string) =>
@@ -48,7 +50,7 @@ export const removeDiscriminator = (user: string) => {
 	}
 
 	return username;
-}
+};
 
 export const deckIdToDeck = (deckName: string) => {
 	for (const deck of decks) {
