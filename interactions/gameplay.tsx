@@ -99,9 +99,9 @@ export default class GameplayInteractions extends ButtonInteraction {
 													new Embed({
 														...UnoGame.embedTemplate,
 														title: "Cards drawn",
-														description: `You have drawn ${drawAmount} card and received a ${cardToString(
-															card
-														)}!`,
+														description: `You have drawn ${drawAmount} card${
+															drawAmount > 1 ? "s" : ""
+														} and received a ${cardToString(card)}!`,
 													}).setColor("GREEN"),
 												],
 												components: (
@@ -222,7 +222,7 @@ export default class GameplayInteractions extends ButtonInteraction {
 								...UnoGame.embedTemplate,
 								title: "Callout!",
 								description: [
-									calledOutAmount > 1
+									calledOutAmount > 0
 										? `You have called out ${calledOutAmount} player${
 												calledOutAmount !== 1 ? "s" : ""
 										  } for not saying UNO!`
