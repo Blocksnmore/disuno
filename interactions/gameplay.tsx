@@ -85,12 +85,14 @@ export default class GameplayInteractions extends ButtonInteraction {
 												}).setColor("RED"),
 											],
 										});
+										game.lastAction = `${removeDiscriminator(i.user.tag)} drew \`${drawAmount}\` card${drawAmount == 1 ? "" : "s"}.`;
 									} else {
 										const card = game.gameDeck.pop()!;
 										game.currentPlayer.cards.push(card);
 										if (!game.isPlayableCard(card)) {
 											drawCard();
 										} else {
+											game.lastAction = `${removeDiscriminator(i.user.tag)} drew \`${drawAmount}\` card${drawAmount == 1 ? "" : "s"}.`;
 											game.currentPlayer.candraw = false;
 											game.showGameEmbed(false);
 											await i.reply({

@@ -312,7 +312,7 @@ export class UnoGame {
 						{
 							name: "Last Played card",
 							value: cardToString(this.lastPlayedCard),
-							inline: true
+							inline: true,
 						},
 						{
 							name: "Final results",
@@ -326,7 +326,7 @@ export class UnoGame {
 										}\``
 								)
 								.join("\n"),
-							inline: true
+							inline: true,
 						},
 					],
 					footer: {
@@ -423,8 +423,6 @@ export class UnoGame {
 				<>
 					<ActionRow>
 						<Button style="blurple" label="View cards" id="hand" />
-						<Button style="red" label="Draw cards" id="draw" />
-						<Button style="red" label="Leave game" id="leave" />
 						<Button
 							style="grey"
 							label="Call UNO!"
@@ -435,6 +433,9 @@ export class UnoGame {
 								).length < 1
 							}
 						/>
+						<Button style="grey" label="|" id="spacer" disabled={true} />
+						<Button style="red" label="Draw cards" id="draw" />
+						<Button style="red" label="Leave game" id="leave" />
 					</ActionRow>
 				</>
 			),
